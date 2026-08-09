@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Quiniela 2026/2027 — Demo</title>
+<style>
+  :root{
+    --red:#D11A2A;--red-deep:#A8121F;--red-soft:#FCEDEE;
+    --ink:#1B1D21;--ink-2:#5A5F67;--ink-3:#888E97;
+    --bg:#FFFFFF;--bg-soft:#F7F8F9;--bg-soft2:#F1F2F4;--line:#E5E7EA;--line-2:#D7DADE;
+    --green:#2E9E5B;--green-soft:#EAF6EE;--miss:#A6ACB4;
+    --amber-bg:#FFFBF4;--amber-line:#F0D9B8;--amber-ink:#9A6A12;
+    --radius:14px;--font:"Helvetica Neue",Helvetica,"Segoe UI",Arial,sans-serif;
+    --shadow:0 8px 24px -12px rgba(20,22,26,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-soft);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .num{font-variant-numeric:tabular-nums}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select{font-family:inherit}
+  .eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:11.5px;color:var(--red);font-weight:700}
+
+  /* LOGIN */
+  #login{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(900px 500px at 50% -20%, var(--red-soft), #fff 60%)}
+  .login-card{width:100%;max-width:380px;text-align:center}
+  .crest{font-weight:700;font-size:12px;letter-spacing:.28em;color:var(--red);text-transform:uppercase;margin-bottom:20px}
+  .login-card h1{font-weight:800;font-size:42px;line-height:1.02;letter-spacing:-.01em}
+  .login-card h1 .season{color:var(--red)}
+  .login-rule{width:54px;height:4px;background:var(--red);border-radius:3px;margin:16px auto 18px}
+  .login-sub{color:var(--ink-2);font-size:14px;margin-bottom:30px}
+  .field{margin-bottom:14px;text-align:left}
+  .field label{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);margin-bottom:7px;font-weight:700}
+  .field input{width:100%;padding:13px 14px;background:#fff;border:1.5px solid var(--line-2);border-radius:10px;color:var(--ink);font-size:15px}
+  .field input:focus{outline:none;border-color:var(--red)}
+  .btn-primary{width:100%;margin-top:8px;padding:14px;border-radius:10px;background:var(--red);color:#fff;font-weight:700;font-size:15px;transition:filter .15s}
+  .btn-primary:hover{filter:brightness(1.05)}
+  .login-hint{margin-top:22px;font-size:12.5px;color:var(--ink-3)}
+  .login-hint b{color:var(--ink-2)}
+  .login-err{min-height:16px;margin-top:12px;font-size:13px;color:var(--red);font-weight:600}
+  .btn-primary:disabled{opacity:.6;cursor:default}
+
+  /* SHELL */
+  #app{display:none;min-height:100vh;flex-direction:column}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:16px;padding:13px 22px;background:#fff;border-bottom:1px solid var(--line)}
+  .wordmark{font-weight:800;font-size:19px;letter-spacing:-.01em;white-space:nowrap}
+  .wordmark span{color:var(--red)}
+  .jornada-pill{display:flex;align-items:center;gap:7px;padding:5px 12px;background:var(--bg-soft2);border-radius:99px;font-size:13px;color:var(--ink-2)}
+  .jornada-pill b{color:var(--ink);font-weight:700}
+  .spacer{flex:1}
+  .countdown{display:flex;align-items:center;gap:9px}
+  .countdown .dot{width:8px;height:8px;border-radius:99px;background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+  .countdown.closed .dot{background:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+  .countdown .lbl{color:var(--ink-2);text-transform:uppercase;letter-spacing:.08em;font-size:10.5px;font-weight:600}
+  .countdown .val{color:var(--ink);font-weight:700;font-size:14px}
+  .userchip{display:flex;align-items:center;gap:9px;padding:4px 6px 4px 13px;background:var(--bg-soft2);border-radius:99px}
+  .userchip .nm{font-size:13px;font-weight:600}
+  .userchip .av{width:27px;height:27px;border-radius:99px;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .logout{padding:7px 12px;border-radius:99px;background:var(--bg-soft2);color:var(--ink-2);font-size:12.5px;font-weight:600}
+  .logout:hover{background:var(--red-soft);color:var(--red-deep)}
+
+  .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
+  .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
+  .tab:hover{color:var(--ink)}
+  .tab.active{color:var(--red);border-bottom-color:var(--red)}
+
+  main{flex:1;max-width:1060px;width:100%;margin:0 auto;padding:26px 22px 120px}
+  .view{display:none}.view.active{display:block;animation:fade .22s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+  .section-head h2{font-weight:800;font-size:29px;letter-spacing:-.01em}
+  .section-head p{color:var(--ink-2);font-size:13.5px;max-width:46ch}
+
+  .notice{display:flex;gap:11px;align-items:flex-start;padding:13px 15px;border-radius:11px;background:#fff;border:1px solid var(--line);font-size:13.5px;color:var(--ink-2);margin-bottom:20px}
+  .notice .ic{flex-shrink:0}
+  .notice.lock{background:var(--red-soft);border-color:#f3d2d5}
+  .notice b{color:var(--ink)}
+
+  /* COUPON */
+  .coupon{background:#fff;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .coupon-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;background:var(--red);color:#fff}
+  .coupon-head .ttl{font-weight:800;font-size:17px}
+  .coupon-head .meta{font-size:12px;opacity:.92}
+  .col-legend{display:grid;grid-template-columns:32px 1fr 138px 42px;padding:8px 18px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+  .col-legend .opts{display:grid;grid-template-columns:repeat(3,1fr);text-align:center}
+  .col-legend .sth{text-align:center;color:var(--red)}
+  .match{display:grid;grid-template-columns:32px 1fr 138px 42px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line)}
+  .match:last-child{border-bottom:none}
+  .match:nth-child(even){background:var(--bg-soft)}
+  .match .no{font-weight:700;font-size:14px;color:var(--ink-3)}
+  .match .teams{font-size:14.5px;font-weight:500}
+  .match .teams .seg{font-size:9.5px;font-weight:700;letter-spacing:.06em;color:#fff;background:var(--ink-3);padding:1.5px 5px;border-radius:4px;margin-left:7px;vertical-align:1px}
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .opt{height:36px;border:1.5px solid var(--line-2);border-radius:8px;font-weight:700;font-size:15px;color:var(--ink);background:#fff;transition:all .12s}
+  .opt:hover{border-color:var(--red)}
+  .opt.sel{background:var(--red);color:#fff;border-color:var(--red)}
+  .star{display:grid;place-items:center}
+  .star button{width:32px;height:32px;border-radius:8px;font-size:17px;color:var(--line-2);line-height:1}
+  .star button.on{color:var(--red)}
+  .star button:disabled{opacity:.4;cursor:not-allowed}
+  .star.hidden{visibility:hidden}
+  .coupon-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:15px 18px;border-top:1px solid var(--line);background:var(--bg-soft)}
+  .coupon-foot .stat{font-size:13px;color:var(--ink-2)}
+  .coupon-foot .stat b{color:var(--ink);font-size:16px;font-weight:700}
+  .save{padding:11px 24px;border-radius:9px;background:var(--red);color:#fff;font-weight:700;font-size:14.5px}
+  .save:hover{filter:brightness(1.05)}
+
+  .copita-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;border-radius:12px;background:var(--red-soft);border:1px solid #f3d2d5}
+  .copita-bar .cup{font-size:22px}
+  .copita-bar .txt{font-size:13.5px;color:var(--ink)}
+  .copita-bar .txt b{font-weight:700}
+
+  .pleno{margin-top:18px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+  .pleno .ph{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+  .pleno .ph .t{font-weight:800;font-size:16px}
+  .pleno .ph .v{font-size:12px;color:var(--ink-2)}
+  .pleno-row{display:flex;align-items:center;justify-content:center;gap:14px}
+  .pleno-row .tm{font-weight:600;font-size:15px;width:120px}
+  .pleno-row .tm.away{text-align:left}.pleno-row .tm.home{text-align:right}
+  .roller{width:56px;height:56px;border:1.5px solid var(--line-2);border-radius:11px;background:#fff;font-weight:800;font-size:24px;color:var(--ink);text-align:center}
+  .roller:focus{outline:none;border-color:var(--red)}
+  .pleno-row .x{color:var(--ink-3);font-weight:700}
+
+  /* JORNADA CLASIFICACIÓN (cerrada) */
+  .jcl{border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+  .jcl .jh{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .jcl .jh .t{font-weight:800;font-size:16px}
+  .jcl .jh .sub{font-size:12px;color:var(--ink-2);font-weight:600}
+  .jcl table{border-collapse:collapse;width:100%;font-size:14px}
+  .jcl td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .jcl tbody tr:last-child td{border-bottom:none}
+  .jcl tr.coinrow{background:var(--amber-bg)}
+  .jcl .pos{font-weight:800;color:var(--ink-3);width:46px}
+  .jcl tr.cop .pos{color:var(--red)}
+  .jcl .nm{font-weight:600}
+  .jcl .nm .note{display:block;font-size:11.5px;color:var(--ink-2);font-weight:500;margin-top:2px}
+  .jcl .pts{font-weight:800;text-align:center;width:54px;font-size:15px}
+  .jcl .stcell{text-align:right;width:150px}
+  .jcl .st{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:99px;white-space:nowrap}
+  .jcl .st.sigue{color:var(--green);background:var(--green-soft)}
+  .jcl .st.desc{color:var(--ink-2);background:var(--bg-soft2)}
+  .jcl .st.cop{color:#fff;background:var(--red)}
+  .jcl .st.coin{color:var(--amber-ink);background:#FFF1DC;border:1px solid var(--amber-line)}
+  .coin-callout{padding:15px 16px;border-radius:12px;background:var(--amber-bg);border:1px solid var(--amber-line);font-size:13.5px;color:var(--ink);margin-bottom:16px}
+  .coin-callout .ct{font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .coin-callout p{color:var(--ink-2);margin-top:6px}
+  .coin-callout b{color:var(--ink)}
+  .detail-h{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);margin:22px 0 12px}
+
+  /* REVEAL grid */
+  .reveal-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+  table.reveal{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+  table.reveal th,table.reveal td{padding:9px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.reveal thead th{background:var(--red);color:#fff;font-weight:700;font-size:12px;position:sticky;top:0}
+  table.reveal th.match,table.reveal td.match{text-align:left;position:sticky;left:0;background:#fff;z-index:2;min-width:170px;border-right:1px solid var(--line)}
+  table.reveal thead th.match{background:var(--red-deep);z-index:3}
+  table.reveal td.match .res{display:inline-block;min-width:20px;font-weight:800;color:var(--red);margin-right:8px}
+  table.reveal td.match .seg{font-size:9px;font-weight:700;color:#fff;background:var(--ink-3);padding:1px 4px;border-radius:3px;margin-left:6px}
+  table.reveal td.pick{font-weight:700;color:var(--miss)}
+  table.reveal td.pick.hit{color:var(--green);background:var(--green-soft)}
+  table.reveal tbody tr:nth-child(even) td.match{background:var(--bg-soft)}
+  table.reveal tfoot td{font-weight:800;background:var(--bg-soft2);border-top:2px solid var(--line-2)}
+  table.reveal tfoot td.match{text-align:right;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
+  table.reveal tfoot td.tot{color:var(--red);font-size:15px}
+
+  .pleno-reveal{margin-top:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:15px 18px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
+  .pleno-reveal .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--red);background:var(--red-soft);padding:4px 9px;border-radius:99px}
+  .pleno-reveal .body{font-size:14px;color:var(--ink-2)}
+  .pleno-reveal .body b{color:var(--ink)}.pleno-reveal .body .sc{font-weight:800}
+
+  /* CLASIFICACIÓN */
+  .seg-toggle{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:3px}
+  .seg-toggle button{padding:8px 16px;border-radius:99px;font-weight:600;font-size:13.5px;color:var(--ink-2)}
+  .seg-toggle button.on{background:var(--red);color:#fff}
+  .standings{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+  table.std{border-collapse:collapse;width:100%;font-size:14px}
+  table.std th,table.std td{padding:13px 14px;text-align:left;border-bottom:1px solid var(--line)}
+  table.std tbody tr:last-child td{border-bottom:none}
+  table.std thead th{font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-soft)}
+  table.std td.c,table.std th.c{text-align:center}table.std td.r,table.std th.r{text-align:right}
+  table.std .pos{font-weight:800;color:var(--ink-3);width:30px}
+  table.std tr.top1 .pos,table.std tr.top2 .pos,table.std tr.top3 .pos{color:var(--red)}
+  table.std tr.top1{background:linear-gradient(90deg,var(--red-soft),transparent 60%)}
+  table.std .who{font-weight:600}
+  table.std .who .eq{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
+  table.std .total{font-weight:800;font-size:17px}
+  table.std .money{color:var(--green);font-weight:700}
+  table.std .cup{color:var(--red)}
+  table.std .state{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
+  table.std .state.play{color:var(--green);background:var(--green-soft)}
+  table.std .state.rest{color:var(--ink-2);background:var(--bg-soft2)}
+  table.std .dim{opacity:.55}
+
+  .team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px}
+  .team-card{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;box-shadow:var(--shadow)}
+  .team-card.lead{border:1.5px solid var(--red)}
+  .team-card .th{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .team-card.lead .th{background:var(--red);color:#fff}
+  .team-card .th .nm{font-weight:800;font-size:16px}
+  .team-card .th .tot{font-weight:800;font-size:20px}
+  .team-card.lead .th .tot{color:#fff}.team-card:not(.lead) .th .tot{color:var(--red)}
+  .team-card .mem{display:flex;justify-content:space-between;padding:10px 16px;font-size:13.5px;border-bottom:1px solid var(--line)}
+  .team-card .mem:last-child{border-bottom:none}
+  .team-card .mem .pp{font-weight:700;color:var(--ink-2)}
+
+  /* TABLAS */
+  .tablas-grid{display:grid;gap:14px}
+  .tb-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .tb-card .tbh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:13px;flex-wrap:wrap}
+  .tb-card .tbh .t{font-weight:800;font-size:16px}
+  .tb-card .tbh .pts{font-size:11.5px;color:var(--red);font-weight:600}
+  .single-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+  .single-row:last-child{border-bottom:none}
+  .single-row .lab{font-size:14px;display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .x2{font-size:10.5px;font-weight:800;letter-spacing:.04em;color:var(--red);border:1.5px solid var(--red);border-radius:6px;padding:2px 7px;cursor:pointer;user-select:none;transition:all .12s}
+  .x2.on{background:var(--red);color:#fff}
+  .single-row select,.single-row input.write{background:#fff;border:1.5px solid var(--line-2);border-radius:8px;color:var(--ink);padding:9px 11px;font-size:13.5px;min-width:185px}
+  .single-row select:focus,.single-row input.write:focus{outline:none;border-color:var(--red)}
+  .single-row input.write::placeholder{color:var(--ink-3)}
+  .ordered-list{display:grid;gap:9px}
+  .ord-row{display:grid;grid-template-columns:30px 1fr;gap:11px;align-items:center}
+  .ord-row .rank{font-weight:800;color:var(--red);text-align:center;font-size:14px}
+  .ord-row select{width:100%;background:#fff;border:1.5px solid var(--line-2);border-radius:8px;color:var(--ink);padding:10px 11px;font-size:13.5px}
+  .ord-row select:focus{outline:none;border-color:var(--red)}
+
+  /* INSTRUCCIONES (provisional) */
+  .doc{max-width:720px}
+  .instr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:22px}
+  .icard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .icard .h{font-weight:800;font-size:15px;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+  .icard .h .n{width:22px;height:22px;border-radius:7px;background:var(--red);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:800}
+  .icard p{font-size:13.5px;color:var(--ink-2)}.icard p b{color:var(--ink)}
+  .prize-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:6px}
+  .prize{padding:16px;border-radius:13px;background:var(--red-soft);border:1px solid #f3d2d5}
+  .prize .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--red-deep);font-weight:700}
+  .prize .v{font-weight:800;font-size:25px;margin-top:4px}.prize .v small{font-size:13px;color:var(--ink-2);font-weight:600}
+  .doc h3{font-weight:800;font-size:18px;margin:8px 0 12px}
+
+  /* DEMO BAR */
+  #demobar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:50;display:flex;align-items:center;gap:14px;padding:8px 12px 8px 16px;background:#fff;border:1px solid var(--line-2);border-radius:99px;box-shadow:0 14px 40px -12px rgba(20,22,26,.3);max-width:calc(100vw - 24px)}
+  #demobar .dlbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);font-weight:800}
+  #demobar .grp{display:flex;align-items:center;gap:6px}
+  #demobar .grp .gn{font-size:10.5px;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;font-weight:600}
+  #demobar .mini{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:2px}
+  #demobar .mini button{padding:5px 11px;border-radius:99px;font-weight:600;font-size:12.5px;color:var(--ink-2)}
+  #demobar .mini button.on{background:var(--red);color:#fff}
+
+  @media (max-width:720px){
+    .topbar{flex-wrap:wrap;gap:10px;padding:11px 14px}.jornada-pill{order:3}
+    main{padding:20px 14px 130px}.section-head h2{font-size:24px}
+    .col-legend,.match{grid-template-columns:24px 1fr 104px 34px}
+    #demobar{flex-wrap:wrap;justify-content:center;border-radius:20px}.countdown .lbl{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <div class="crest">Porra Familiar</div>
+    <h1>La Quiniela <span class="season">26·27</span></h1>
+    <div class="login-rule"></div>
+    <p class="login-sub">Entra con tu usuario para dejar tus pronósticos de la jornada.</p>
+    <div class="field"><label>Usuario</label><input id="u" type="text" placeholder="tu usuario" autocomplete="username" autocapitalize="none" spellcheck="false"></div>
+    <div class="field"><label>Clave</label><input id="p" type="password" placeholder="tu clave" autocomplete="current-password"></div>
+    <p id="loginErr" class="login-err"></p>
+    <button class="btn-primary" id="loginBtn">Entrar</button>
+    <p class="login-hint" id="loginHint">Usa el usuario y la clave que te ha pasado José.</p>
+  </div>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <div class="wordmark">La Quiniela <span>26·27</span></div>
+    <div class="jornada-pill">Jornada <b>5</b> · 38</div>
+    <div class="spacer"></div>
+    <div class="countdown" id="cd"><span class="dot"></span><span><span class="lbl">Cierre</span> <span class="val" id="cdval">Sáb 13:55</span></span></div>
+    <div class="userchip"><span class="nm" id="uname">Leti I</span><span class="av" id="uav">L</span></div>
+    <button class="logout" id="logoutBtn" title="Salir" aria-label="Salir">Salir</button>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-v="jornada" onclick="go('jornada')">Jornada</button>
+    <button class="tab" data-v="clasif" onclick="go('clasif')">Clasificación</button>
+    <button class="tab" data-v="tablas" onclick="go('tablas')">Tablas</button>
+    <button class="tab" data-v="instr" onclick="go('instr')">Instrucciones</button>
+  </nav>
+
+  <main>
+    <section class="view active" id="v-jornada">
+      <div class="section-head">
+        <div><div class="eyebrow">Jornada 5</div><h2>Tus pronósticos</h2></div>
+        <p id="jor-sub">14 partidos a 1·X·2. Acertar cada uno suma 1 punto.</p>
+      </div>
+
+      <div id="open-state">
+        <div class="notice lock"><span class="ic">🔒</span><span>Hasta el cierre, <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos cuantas veces quieras antes del sábado a las 13:55.</span></div>
+        <div id="copita-block"></div>
+        <div class="coupon" id="coupon"></div>
+        <div id="pleno-block"></div>
+      </div>
+
+      <div id="closed-state" style="display:none">
+        <div class="notice lock"><span class="ic">✓</span><span>La jornada ha cerrado y se han <b>destapado los pronósticos</b>. Esta jornada la jugaron 8; los otros 4 descansaban. Abajo, quién se clasifica aplicando los criterios de desempate.</span></div>
+        <div id="jorClasif"></div>
+        <div id="coinCallout"></div>
+        <div class="detail-h">El detalle, partido a partido</div>
+        <div class="reveal-wrap"><table class="reveal" id="revealtbl"></table></div>
+        <div class="pleno-reveal" id="plenoReveal"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-clasif">
+      <div class="section-head">
+        <div><div class="eyebrow">General · tras Jornada 4</div><h2>Clasificación</h2></div>
+        <div class="seg-toggle"><button class="on" id="seg-ind" onclick="segView('ind')">Individual</button><button id="seg-eq" onclick="segView('eq')">Por equipos</button></div>
+      </div>
+      <div id="clasif-ind">
+        <div class="standings"><table class="std">
+          <thead><tr><th class="pos">#</th><th>Participante</th><th class="c">J5</th><th class="r">€ ganado</th><th class="c">Copitas</th><th class="c">Tablas</th><th class="r">Total</th></tr></thead>
+          <tbody id="std-body"></tbody>
+        </table></div>
+      </div>
+      <div id="clasif-eq" style="display:none"><div class="team-grid" id="team-grid"></div></div>
+    </section>
+
+    <section class="view" id="v-tablas">
+      <div class="section-head"><div><div class="eyebrow">Pronósticos previos · cierre 14 ago 12:00</div><h2>Las Tablas</h2></div><p>Se rellenan una vez antes de empezar. Valen mucho y deciden empates en la general.</p></div>
+      <div class="notice lock"><span class="ic">🔒</span><span>Igual que la jornada: hasta el 14 de agosto <b>solo ves las tuyas</b>; al cerrar se destapan las de todos.</span></div>
+      <div class="tablas-grid" id="tablas-grid"></div>
+    </section>
+
+    <section class="view" id="v-instr">
+      <div class="section-head"><div><div class="eyebrow">El formato · provisional</div><h2>Cómo funciona</h2></div></div>
+      <div class="doc">
+        <div class="instr-grid">
+          <div class="icard"><div class="h"><span class="n">1</span>Las jornadas</div><p>38 jornadas. Cada semana <b>8 juegan y 4 descansan</b>. A la siguiente, los 4 que descansaron entran y descansan los 4 peores de los que jugaron.</p></div>
+          <div class="icard"><div class="h"><span class="n">2</span>La copita</div><p>El mejor de cada jornada es la <b>copita</b>: elige el Pleno al 15 (resultado exacto, 4 pts). Si lo clava, <b>se salva</b> de descansar.</p></div>
+          <div class="icard"><div class="h"><span class="n">3</span>Las tablas</div><p>Antes del 14 de agosto se rellenan los pronósticos de temporada. <b>Deciden los empates</b> de la general.</p></div>
+          <div class="icard"><div class="h"><span class="n">4</span>Si lo olvidas</div><p>Quiniela <b>al azar por defecto</b>, esa jornada vale <b>la mitad</b> y quedas eliminado.</p></div>
+        </div>
+        <h3>Premios</h3>
+        <div class="prize-strip">
+          <div class="prize"><div class="k">Campeón</div><div class="v">110€</div></div>
+          <div class="prize"><div class="k">Equipo campeón</div><div class="v">20€ <small>/ persona</small></div></div>
+          <div class="prize"><div class="k">Inscripción</div><div class="v">35€ <small>bizum a José</small></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="demobar" style="display:none">
+  <span class="dlbl">Demo</span>
+  <div class="grp"><span class="gn">Rol</span><div class="mini"><button class="on" id="r-part" onclick="setRole('part')">Participante</button><button id="r-admin" onclick="setRole('admin')">Admin</button></div></div>
+  <div class="grp"><span class="gn">Jornada</span><div class="mini"><button class="on" id="s-open" onclick="setState('open')">Abierta</button><button id="s-closed" onclick="setState('closed')">Cerrada</button></div></div>
+  <div class="grp"><span class="gn">Eres copita</span><div class="mini"><button id="c-no" class="on" onclick="setCopita(false)">No</button><button id="c-yes" onclick="setCopita(true)">Sí</button></div></div>
+</div>
+
+<script>
+const LIGA=["Real Madrid","Barcelona","Atlético","Athletic","Real Sociedad","Villarreal","Betis","Girona","Sevilla","Valencia","Osasuna","Getafe","Rayo Vallecano","Celta","Mallorca","Espanyol","Alavés","Las Palmas","Leganés","Valladolid"];
+const SEGUNDA=["Dépor","Racing","Almería","Oviedo","Granada","Levante","Eibar","Sporting","Zaragoza","Mirandés","Huesca","Cartagena","Burgos","Albacete","Tenerife","Elche"];
+
+const PARTS=[
+  {n:"Leti I",   eq:"Whisky Juice",   total:42, money:0,  cop:2, tablas:31, plays:true},
+  {n:"Carlos",   eq:"Whisky Juice",   total:39, money:15, cop:1, tablas:28, plays:true},
+  {n:"David",    eq:"Los Pichichis",  total:37, money:0,  cop:0, tablas:33, plays:true},
+  {n:"Mamá",     eq:"Los Pichichis",  total:35, money:0,  cop:1, tablas:26, plays:true},
+  {n:"Nacho",    eq:"Penalti Fallado",total:34, money:10, cop:0, tablas:24, plays:true},
+  {n:"Andrés IV",eq:"VAR Mola",       total:33, money:0,  cop:0, tablas:29, plays:true},
+  {n:"Papá",     eq:"Penalti Fallado",total:28, money:0,  cop:0, tablas:19, plays:true},
+  {n:"Tía Marisa",eq:"VAR Mola",      total:24, money:0,  cop:0, tablas:18, plays:true},
+  {n:"Lucía",    eq:"Los Pichichis",  total:31, money:0,  cop:0, tablas:22, plays:false},
+  {n:"Sara",     eq:"Whisky Juice",   total:30, money:0,  cop:0, tablas:27, plays:false},
+  {n:"Quique",   eq:"Penalti Fallado",total:26, money:0,  cop:0, tablas:20, plays:false},
+  {n:"Bea",      eq:"VAR Mola",       total:22, money:0,  cop:0, tablas:15, plays:false},
+];
+const TEAMS=["Whisky Juice","Los Pichichis","Penalti Fallado","VAR Mola"];
+
+const FIX=[
+  ["Real Madrid","Osasuna",0],["Barcelona","Getafe",0],["Atlético","Sevilla",0],
+  ["Athletic","Valencia",0],["Villarreal","Betis",0],["R. Sociedad","Girona",0],
+  ["Celta","Rayo",0],["Mallorca","Espanyol",0],
+  ["Racing","Almería",1],["Dépor","Granada",1],["Levante","Eibar",1],
+  ["Oviedo","Sporting",1],["Zaragoza","Mirandés",1],["Huesca","Cartagena",1],
+];
+const RESULTS=["1","X","2","1","1","X","2","1","1","2","X","1","1","X"];
+const PLENO={home:"Las Palmas",away:"Leganés",pred:[1,1],real:[2,1]};
+const COPITA="Carlos"; // copita de la J5 (puso el Pleno) — falló, no se salva
+
+/* aciertos amañados para mostrar desempates (índices acertados de cada jugador) */
+const HITS={
+  "David":   [0,2,3,4,6,7,8,9,10,11,12],         // 11
+  "Leti I":  [1,2,5,6,8,9,10,11,12,13],          // 10 · 2ª=6
+  "Andrés IV":[1,2,3,4,5,6,7,8,9,10],            // 10 · 2ª=3
+  "Carlos":  [0,1,2,3,4,5,6,7],                  // 8  ┐ idénticos
+  "Nacho":   [0,1,2,3,4,5,6,7],                  // 8  ┘ → sorteo
+  "Mamá":    [0,2,3,4,6,7,8],                    // 7
+  "Papá":    [0,1,3,4,7,11],                     // 6
+  "Tía Marisa":[2,3,5,8,12],                     // 5
+};
+const wrong=r=>(r!=="1"?"1":"X");
+const predOf=name=>{const h=HITS[name];return RESULTS.map((r,i)=>h.includes(i)?r:wrong(r));};
+
+let ROLE="part",STATE="open",ISCOPITA=false;
+let myPred=predOf("Leti I").slice();
+let myStars=new Set();
+
+function showLogin(){document.getElementById("login").style.display="flex";document.getElementById("app").style.display="none";document.getElementById("demobar").style.display="none";}
+function showAppFor(name){
+  document.getElementById("login").style.display="none";
+  document.getElementById("app").style.display="flex";
+  document.getElementById("demobar").style.display="flex";
+  const pretty=name.charAt(0).toUpperCase()+name.slice(1);
+  document.getElementById("uname").textContent=pretty;
+  document.getElementById("uav").textContent=pretty.charAt(0).toUpperCase();
+  ROLE=(name==="admin"||name==="jose")?"admin":"part";
+  document.getElementById("r-part").classList.toggle("on",ROLE==="part");
+  document.getElementById("r-admin").classList.toggle("on",ROLE==="admin");
+  render();
+}
+function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");}
+function setRole(r){ROLE=r;document.getElementById("r-part").classList.toggle("on",r==="part");document.getElementById("r-admin").classList.toggle("on",r==="admin");document.getElementById("uname").textContent=r==="admin"?"José":"Leti I";document.getElementById("uav").textContent=r==="admin"?"J":"L";render();}
+function setState(s){STATE=s;document.getElementById("s-open").classList.toggle("on",s==="open");document.getElementById("s-closed").classList.toggle("on",s==="closed");render();}
+function setCopita(b){ISCOPITA=b;document.getElementById("c-yes").classList.toggle("on",b);document.getElementById("c-no").classList.toggle("on",!b);render();}
+
+function render(){
+  const cd=document.getElementById("cd");cd.classList.toggle("closed",STATE==="closed");
+  document.getElementById("cdval").textContent=STATE==="closed"?"Cerrada":"Sáb 13:55";
+  document.getElementById("open-state").style.display=STATE==="open"?"block":"none";
+  document.getElementById("closed-state").style.display=STATE==="closed"?"block":"none";
+  if(STATE==="open"){renderCoupon();renderCopita();renderPleno();}
+  else{renderJornadaClasif();renderReveal();renderPlenoReveal();}
+  renderStandings();renderTeams();renderTablas();
+  document.getElementById("jor-sub").textContent=ROLE==="admin"?"Vista admin: aquí cargas los 14 partidos y fijas la hora de cierre.":"14 partidos a 1·X·2. Acertar cada uno suma 1 punto.";
+}
+
+function renderCoupon(){
+  const cop=ISCOPITA;
+  let h=`<div class="coupon-head"><span class="ttl">Boleto · Jornada 5</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"1 local · X empate · 2 visitante"}</span></div>
+    <div class="col-legend"><span>Nº</span><span>Partido</span><span class="opts"><span>1</span><span>X</span><span>2</span></span><span class="sth">${cop?"★":""}</span></div>`;
+  FIX.forEach((f,i)=>{const sel=myPred[i];
+    h+=`<div class="match"><span class="no num">${i+1}</span>
+      <span class="teams">${f[0]} <span style="color:var(--ink-3)">·</span> ${f[1]}${f[2]?'<span class="seg">2ª</span>':''}</span>
+      <span class="opts">${["1","X","2"].map(o=>`<button class="opt ${sel===o?'sel':''}" onclick="pick(${i},'${o}')">${o}</button>`).join("")}</span>
+      <span class="star ${cop?'':'hidden'}"><button class="${myStars.has(i)?'on':''}" onclick="toggleStar(${i})" title="Destacado">★</button></span></div>`;});
+  const done=myPred.filter(Boolean).length;
+  h+=`<div class="coupon-foot"><span class="stat">Pronosticados <b class="num">${done}/14</b></span>
+    ${cop?`<span class="stat">Destacados <b class="num">${myStars.size}/8</b></span>`:''}
+    <button class="save">${ROLE==="admin"?"Publicar jornada":"Guardar pronósticos"}</button></div>`;
+  document.getElementById("coupon").innerHTML=h;
+}
+function pick(i,o){myPred[i]=o;renderCoupon();}
+function toggleStar(i){if(myStars.has(i))myStars.delete(i);else if(myStars.size<8)myStars.add(i);renderCoupon();}
+
+function renderCopita(){const el=document.getElementById("copita-block");
+  el.innerHTML=ISCOPITA
+    ?`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">Esta semana eres la <b>copita</b>. Rellena el <b>Pleno al 15</b> del partido que ha puesto Loterías y marca tus <b>8 destacados</b> (★) — los destacados no puntúan en la porra, son para tu control.</span></div>`
+    :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">La copita de esta jornada es <b>Carlos</b>. Él rellena el Pleno al 15. Si lo clava, se salva de descansar.</span></div>`;
+}
+function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
+  el.innerHTML=`<div class="pleno"><div class="ph"><span class="t">Pleno al 15</span><span class="v">Resultado exacto · 4 puntos · partido fijado por Loterías</span></div>
+    <div class="pleno-row"><span class="tm home">${PLENO.home}</span><input class="roller num" type="text" value="1" maxlength="2"><span class="x">–</span><input class="roller num" type="text" value="1" maxlength="2"><span class="tm away">${PLENO.away}</span></div></div>`;
+}
+
+/* -------- clasificación de la jornada con desempates -------- */
+function computeJornada(){
+  const arr=PARTS.filter(p=>p.plays).map(p=>{
+    const h=HITS[p.n];const isCop=(p.n===COPITA);const plenoHit=false;
+    return {name:p.n, isCop,
+      pts:h.length+(isCop&&plenoHit?4:0),
+      seg2:h.filter(i=>i>=8).length,
+      away:h.filter(i=>RESULTS[i]==="2").length,
+      draw:h.filter(i=>RESULTS[i]==="X").length};
+  });
+  arr.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  arr.forEach((p,i)=>{
+    const prev=arr[i-1],next=arr[i+1];
+    const same=(x,y)=>x&&y&&x.pts===y.pts&&x.seg2===y.seg2&&x.away===y.away&&x.draw===y.draw;
+    p.coin=same(p,prev)||same(p,next);
+    if(prev&&prev.pts===p.pts){
+      if(prev.seg2!==p.seg2)p.note=`Empate a ${p.pts} con ${prev.name} · desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
+      else if(prev.away!==p.away)p.note=`Empate a ${p.pts} · desempata por visitantes (${p.away} vs ${prev.away})`;
+      else if(prev.draw!==p.draw)p.note=`Empate a ${p.pts} · desempata por empates (${p.draw} vs ${prev.draw})`;
+      else p.note=`Empate a ${p.pts} · iguales en 2ª (${p.seg2}), visitantes (${p.away}) y empates (${p.draw})`;
+    }
+  });
+  return arr;
+}
+function renderJornadaClasif(){
+  const arr=computeJornada();
+  let rows="";
+  arr.forEach((p,i)=>{
+    const pos=i+1;
+    let st,cls;
+    if(p.coin){st="🪙 A sorteo";cls="coin";}
+    else if(i<4){st=i===0?"🏆 Copita J6":"Sigue jugando";cls=i===0?"cop":"sigue";}
+    else{st="Descansa J6";cls="desc";}
+    rows+=`<tr class="${i===0?'cop':''} ${p.coin?'coinrow':''}">
+      <td class="pos num">${pos}º</td>
+      <td class="nm">${p.name}${p.note?`<span class="note">${p.note}</span>`:''}</td>
+      <td class="pts num">${p.pts}</td>
+      <td class="stcell"><span class="st ${cls}">${st}</span></td></tr>`;
+  });
+  document.getElementById("jorClasif").innerHTML=
+    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la Jornada 5</span>
+      <span class="sub">8 jugaron · siguen 4 · descansan 4</span></div>
+      <table><tbody>${rows}</tbody></table></div>`;
+
+  // callout del sorteo
+  const coinPair=arr.filter(p=>p.coin).map(p=>p.name);
+  document.getElementById("coinCallout").innerHTML=
+    `<div class="coin-callout">
+      <div class="ct">🪙 Empate que llega al sorteo de moneda</div>
+      <b>${coinPair[0]}</b> y <b>${coinPair[1]}</b> empatan a 8 puntos e <b>igualan los tres criterios</b> (aciertos de 2ª, de visitantes y de empates). El reglamento lo manda a <b>sorteo de moneda</b>.
+      <p>Qué hace la herramienta: <b>no decide sola</b>. Lo deja en este estado pendiente y espera a que <b>tú, José, introduzcas el resultado de la moneda</b>. Uno pasará a 4º (sigue jugando) y el otro a 5º (descansa la J6).</p>
+      <p>Nota: ${COPITA} era la copita de esta jornada, pero <b>falló el Pleno al 15</b> (${PLENO.pred[0]}–${PLENO.pred[1]} frente al ${PLENO.real[0]}–${PLENO.real[1]} real), así que no se salva automáticamente y entra en el sorteo como uno más.</p>
+    </div>`;
+}
+
+function renderReveal(){
+  const players=PARTS.filter(p=>p.plays);
+  let h=`<thead><tr><th class="match">Partido</th>`;
+  players.forEach(p=>h+=`<th>${p.n.replace("Tía ","").replace(" I","").split(" ")[0]}</th>`);
+  h+=`</tr></thead><tbody>`;
+  const totals=players.map(()=>0);
+  FIX.forEach((f,i)=>{
+    h+=`<tr><td class="match"><span class="res">${RESULTS[i]}</span>${f[0]} · ${f[1]}${f[2]?'<span class="seg">2ª</span>':''}</td>`;
+    players.forEach((p,pi)=>{const pr=predOf(p.n);const hit=pr[i]===RESULTS[i];if(hit)totals[pi]++;h+=`<td class="pick ${hit?'hit':''}">${pr[i]}</td>`;});
+    h+=`</tr>`;});
+  h+=`</tbody><tfoot><tr><td class="match">Puntos jornada</td>`;
+  totals.forEach(t=>h+=`<td class="tot num">${t}</td>`);h+=`</tr></tfoot>`;
+  document.getElementById("revealtbl").innerHTML=h;
+}
+function renderPlenoReveal(){
+  const ok=PLENO.pred[0]===PLENO.real[0]&&PLENO.pred[1]===PLENO.real[1];
+  document.getElementById("plenoReveal").innerHTML=
+    `<span class="tag">Pleno al 15</span><span class="body">Copita <b>${COPITA}</b> · ${PLENO.home} <span class="sc">${PLENO.pred[0]}–${PLENO.pred[1]}</span> ${PLENO.away} &nbsp;·&nbsp; real <b class="sc">${PLENO.real[0]}–${PLENO.real[1]}</b> &nbsp;·&nbsp; ${ok?'<b style="color:var(--green)">+4 pts · se salva</b>':'<b style="color:var(--red)">fallado · no se salva</b>'}</span>`;
+}
+
+function renderStandings(){
+  let h="";
+  PARTS.forEach((p,i)=>{h+=`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+    <td class="pos num">${i+1}</td>
+    <td class="who">${p.n}<span class="eq">${p.eq}</span></td>
+    <td class="c"><span class="state ${p.plays?'play':'rest'}">${p.plays?'Juega':'Descansa'}</span></td>
+    <td class="r ${p.money?'money':'dim'}">${p.money?p.money+'€':'—'}</td>
+    <td class="c"><span class="cup">🏆</span> ${p.cop}</td>
+    <td class="c num">${p.tablas}</td>
+    <td class="r total num">${p.total}</td></tr>`;});
+  document.getElementById("std-body").innerHTML=h;
+}
+function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==="ind");document.getElementById("seg-eq").classList.toggle("on",w==="eq");document.getElementById("clasif-ind").style.display=w==="ind"?"block":"none";document.getElementById("clasif-eq").style.display=w==="eq"?"block":"none";}
+function renderTeams(){
+  const sums=TEAMS.map(t=>({nm:t,tot:PARTS.filter(p=>p.eq===t).reduce((a,p)=>a+p.total,0),mem:PARTS.filter(p=>p.eq===t)}));
+  sums.sort((a,b)=>b.tot-a.tot);
+  document.getElementById("team-grid").innerHTML=sums.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span>${m.n}</span><span class="pp num">${m.total}</span></div>`).join("")}</div>`).join("");
+}
+
+const opts=arr=>arr.map(o=>`<option>${o}</option>`).join("");
+function renderTablas(){
+  const singles=[
+    {lab:"Campeón de liga",type:"team"},
+    {lab:"Pichichi",type:"write",ph:"Escribe el jugador…"},
+    {lab:"Trofeo Zarra",type:"write",ph:"Escribe el jugador…"},
+    {lab:"Equipo menos goleado",type:"team"},
+    {lab:"Equipo máximo goleador",type:"team"},
+    {lab:"1º entrenador destituido",type:"team"},
+  ];
+  let s=`<div class="tb-card"><div class="tbh"><span class="t">Apartados sueltos</span><span class="pts">5 pts c/u · marca uno ×2 (vale 10)</span></div>`;
+  singles.forEach((row,i)=>{const input=row.type==="team"?`<select>${opts(LIGA)}</select>`:`<input class="write" type="text" placeholder="${row.ph}">`;
+    s+=`<div class="single-row"><span class="lab">${row.lab}<span class="x2" data-i="${i}" onclick="toggleX2(${i})">×2</span></span>${input}</div>`;});
+  s+=`</div>`;
+  const ordered=[
+    {t:"Champions League (1º–4º)",n:4,pts:"3 pts equipo · +5 posición exacta · +15 los 4",pool:LIGA},
+    {t:"Puestos 5º y 6º",n:2,pts:"3 pts equipo · +5 posición exacta",pool:LIGA},
+    {t:"Descienden a 2ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:LIGA},
+    {t:"Ascienden a 1ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:SEGUNDA},
+    {t:"Descienden a 1ª RFEF (4)",n:4,pts:"3 pts equipo · +5 exacta · +15 los 4",pool:SEGUNDA},
+  ];
+  ordered.forEach(o=>{s+=`<div class="tb-card"><div class="tbh"><span class="t">${o.t}</span><span class="pts">${o.pts}</span></div><div class="ordered-list">`;
+    for(let r=0;r<o.n;r++)s+=`<div class="ord-row"><span class="rank num">${r+1}º</span><select>${opts(o.pool)}</select></div>`;
+    s+=`</div></div>`;});
+  document.getElementById("tablas-grid").innerHTML=s;
+}
+let x2sel=null;
+function toggleX2(i){const all=document.querySelectorAll(".x2");x2sel=(x2sel===i)?null:i;all.forEach(el=>el.classList.toggle("on",parseInt(el.dataset.i)===x2sel));}
+
+render();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
+  authDomain: "quiniela-2026-2027.firebaseapp.com",
+  projectId: "quiniela-2026-2027",
+  storageBucket: "quiniela-2026-2027.firebasestorage.app",
+  messagingSenderId: "65100035401",
+  appId: "1:65100035401:web:75d584e436b03b6a461698"
+};
+const DOMAIN = "laquiniela.app";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const btn = document.getElementById("loginBtn");
+const errEl = document.getElementById("loginErr");
+const uEl = document.getElementById("u");
+const pEl = document.getElementById("p");
+
+async function doLogin(){
+  const user = uEl.value.trim().toLowerCase();
+  const pass = pEl.value;
+  errEl.textContent = "";
+  if(!user || !pass){ errEl.textContent = "Escribe tu usuario y tu clave."; return; }
+  btn.disabled = true; btn.textContent = "Entrando…";
+  try{
+    await signInWithEmailAndPassword(auth, user + "@" + DOMAIN, pass);
+  }catch(err){
+    errEl.textContent = friendly(err.code);
+    btn.disabled = false; btn.textContent = "Entrar";
+  }
+}
+function friendly(code){
+  switch(code){
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found": return "Usuario o clave incorrectos.";
+    case "auth/invalid-email": return "Ese usuario no es válido.";
+    case "auth/too-many-requests": return "Demasiados intentos. Espera un minuto.";
+    case "auth/network-request-failed": return "Sin conexión. Revisa tu internet.";
+    default: return "No se pudo entrar (" + code + ").";
+  }
+}
+btn.addEventListener("click", doLogin);
+uEl.addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+pEl.addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+document.getElementById("logoutBtn").addEventListener("click", ()=> signOut(auth));
+
+onAuthStateChanged(auth, (u)=>{
+  btn.disabled = false; btn.textContent = "Entrar";
+  if(u){
+    const name = (u.email || "").split("@")[0] || "usuario";
+    window.showAppFor(name);
+  }else{
+    window.showLogin();
+  }
+});
+</script>
+</body>
+</html>
