@@ -260,10 +260,18 @@
   table.reveal tr.destrow td.match{box-shadow:inset 3px 0 0 #E6A700}
   .mv-card.dest{border-color:#F2D98A;box-shadow:0 10px 24px -16px rgba(230,167,0,.5)}
 
-  .pleno-reveal{margin-top:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:15px 18px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
-  .pleno-reveal .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--red);background:var(--red-soft);padding:4px 9px;border-radius:99px}
-  .pleno-reveal .body{font-size:14px;color:var(--ink-2)}
-  .pleno-reveal .body b{color:var(--ink)}.pleno-reveal .body .sc{font-weight:800}
+  .pleno-reveal{margin-top:16px}
+  .plr{display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:var(--radius);background:linear-gradient(160deg,#1B1D24,#25202A);border:1px solid #33353D;box-shadow:0 16px 36px -20px rgba(0,0,0,.5)}
+  .plr-badge{width:44px;height:44px;border-radius:12px;background:var(--grad);display:grid;place-items:center;font-size:22px;flex-shrink:0;box-shadow:0 8px 18px -8px rgba(224,30,55,.8)}
+  .plr-main{flex:1;min-width:0}
+  .plr-h{font-size:12px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:5px}
+  .plr-sc{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .plr-guess,.plr-real{font-family:var(--display);font-weight:700;font-size:20px;color:#fff}
+  .plr-vs{font-size:11px;color:#7a7f89;text-transform:uppercase;letter-spacing:.08em}
+  .plr-real{color:var(--red-2)}
+  .plr-out{font-weight:800;font-size:13px;padding:7px 13px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+  .plr.ok .plr-out{background:var(--green);color:#fff}
+  .plr.no .plr-out{background:#3A3C45;color:#c3c7ce}
 
   /* CLASIFICACIÓN */
   .seg-toggle{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:3px}
@@ -292,6 +300,14 @@
   table.std .cops{font-weight:700}
   table.std .tbp{color:var(--blue);font-weight:700}
   table.std .cup{color:var(--red)}
+  .avem{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:8px;background:var(--bg-soft2);font-size:15px;margin-right:9px;line-height:1;flex-shrink:0}
+  .avem.sm{width:23px;height:23px;font-size:13px;margin-right:8px}
+  table.std .who{display:flex;align-items:center}
+  table.std .who .who-nm{display:inline-flex;flex-direction:column;font-weight:600}
+  .userchip .av.emoji{background:var(--bg-soft2);font-size:15px}
+  .team-badge{font-size:24px;margin-right:3px;line-height:1}
+  .team-card .th .nm{flex:1}
+  .team-card .mem .mem-nm{display:flex;align-items:center}
   table.std .state{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
   table.std .state.play{color:var(--green);background:var(--green-soft)}
   table.std .state.rest{color:var(--ink-2);background:var(--bg-soft2)}
@@ -532,6 +548,13 @@
 const LIGA=["Real Madrid","Barcelona","Atlético","Athletic","Real Sociedad","Villarreal","Betis","Girona","Sevilla","Valencia","Osasuna","Getafe","Rayo Vallecano","Celta","Mallorca","Espanyol","Alavés","Las Palmas","Leganés","Valladolid"];
 const SEGUNDA=["Dépor","Racing","Almería","Oviedo","Granada","Levante","Eibar","Sporting","Zaragoza","Mirandés","Huesca","Cartagena","Burgos","Albacete","Tenerife","Elche"];
 
+// Avatares temáticos por participante (emoji que evoca a su personaje, sin reproducir IP)
+const nrm=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
+const AVATARS={dani:"⚡",javi:"🦁",leti:"❄️",mama:"🦸‍♀️",andres:"🤠",cristina:"🧡",fernando:"🥔",jorge:"🐗",jose:"🐾",junis:"☃️",luis:"🚀",tomas:"🧊"};
+const TEAM_EMOJI={"frozen":"❄️","toy story":"🤠","el rey leon":"🦁","los increibles":"🦸"};
+function avatarFor(usuario){return AVATARS[nrm(usuario)]||"";}
+function teamEmoji(nm){return TEAM_EMOJI[nrm(nm)]||"🏳️";}
+
 const PARTS=[
   {n:"Leti I",   eq:"Whisky Juice",   total:42, money:0,  cop:2, tablas:31, plays:true},
   {n:"Carlos",   eq:"Whisky Juice",   total:39, money:15, cop:1, tablas:28, plays:true},
@@ -584,7 +607,10 @@ function showAppFor(name){
   document.getElementById("demobar").style.display="none";
   const pretty=name.charAt(0).toUpperCase()+name.slice(1);
   document.getElementById("uname").textContent=pretty;
-  document.getElementById("uav").textContent=pretty.charAt(0).toUpperCase();
+  const av=avatarFor(name);
+  const uavEl=document.getElementById("uav");
+  uavEl.textContent = av || pretty.charAt(0).toUpperCase();
+  uavEl.classList.toggle("emoji", !!av);
   ROLE="part";
   document.getElementById("tab-admin").style.display="none";
   go("jornada");
@@ -715,7 +741,7 @@ function renderStandings(){
   if(!G.rows.length){ document.getElementById("std-body").innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--ink-2)">Aún no hay participantes dados de alta.</td></tr>'; return; }
   document.getElementById("std-body").innerHTML=G.rows.map((p,i)=>`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
     <td class="pos num">${i+1}</td>
-    <td class="who">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</td>
+    <td class="who">${avatarFor(p.usuario)?`<span class="avem">${avatarFor(p.usuario)}</span>`:''}<span class="who-nm">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</span></td>
     <td class="r ${p.dinero?'money':'dim'}">${p.dinero?p.dinero+'€':'—'}</td>
     <td class="c cops">${p.copitas?`<span class="cup">🏆</span> ${p.copitas}`:`<span class="dim">0</span>`}</td>
     <td class="c num ${p.tablas?'tbp':''}">${p.tablas}</td>
@@ -725,7 +751,7 @@ function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==
 function renderTeams(){
   const G=window.GENERAL;
   if(!G || !G.teams.length){ document.getElementById("team-grid").innerHTML='<div style="color:var(--ink-2)">Sin equipos todavía.</div>'; return; }
-  document.getElementById("team-grid").innerHTML=G.teams.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span>${m.nombre}</span><span class="pp num">${m.puntos}</span></div>`).join("")}</div>`).join("");
+  document.getElementById("team-grid").innerHTML=G.teams.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="team-badge">${teamEmoji(t.nm)}</span><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span class="mem-nm">${avatarFor(m.usuario)?`<span class="avem sm">${avatarFor(m.usuario)}</span>`:''}${m.nombre}</span><span class="pp num">${m.puntos}</span></div>`).join("")}</div>`).join("");
 }
 
 const opts=arr=>arr.map(o=>`<option>${o}</option>`).join("");
@@ -1047,7 +1073,10 @@ async function showClosed(data){
   const cop=pronos.find(p=>p.usuario===copita);
   if(cop && cop.plenoPronostico && plenoReal){
     const ok=Number(cop.plenoPronostico.local)===Number(plenoReal.local)&&Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
-    plEl.innerHTML=`<span class="tag">Pleno al 15</span><span class="body">Copita <b>${copita}</b> · <span class="sc">${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</span> &nbsp;·&nbsp; real <b class="sc">${plenoReal.local}–${plenoReal.visitante}</b> &nbsp;·&nbsp; ${ok?'<b style="color:var(--green)">+4 · se salva</b>':'<b style="color:var(--red)">fallado</b>'}</span>`;
+    plEl.innerHTML=`<div class="plr ${ok?'ok':'no'}"><div class="plr-badge">🏆</div>
+      <div class="plr-main"><div class="plr-h">Pleno al 15 · copita ${cop.nombre||copita}</div>
+      <div class="plr-sc"><span class="plr-guess">${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</span><span class="plr-vs">real</span><span class="plr-real">${plenoReal.local}–${plenoReal.visitante}</span></div></div>
+      <div class="plr-out">${ok?'+4 · se salva 🛟':'fallado'}</div></div>`;
   }else{ plEl.innerHTML=""; }
 
   // sorteo de moneda
