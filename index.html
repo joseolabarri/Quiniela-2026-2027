@@ -219,6 +219,17 @@
   table.reveal tfoot td{font-weight:800;background:var(--bg-soft2);border-top:2px solid var(--line-2)}
   table.reveal tfoot td.match{text-align:right;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
   table.reveal tfoot td.tot{color:var(--red);font-size:15px}
+  .reveal-mobile{display:none}
+  .mv-card{border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow);padding:11px 13px;margin-bottom:10px}
+  .mv-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
+  .mv-name{font-weight:700;font-size:14px}
+  .mv-name .seg{font-size:9px;font-weight:700;color:#fff;background:var(--ink-3);padding:1px 4px;border-radius:3px;margin-left:5px}
+  .mv-res{font-weight:800;color:#fff;background:var(--red);min-width:24px;text-align:center;border-radius:6px;padding:2px 8px;font-size:13px}
+  .mv-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .mv-chip{font-size:12.5px;padding:3px 9px;border-radius:6px;background:var(--bg-soft2);color:var(--ink-2);white-space:nowrap}
+  .mv-chip b{color:var(--ink);margin-left:2px}
+  .mv-chip.hit{background:var(--green-soft)}
+  .mv-chip.hit,.mv-chip.hit b{color:var(--green)}
 
   .pleno-reveal{margin-top:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:15px 18px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow)}
   .pleno-reveal .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--red);background:var(--red-soft);padding:4px 9px;border-radius:99px}
@@ -307,6 +318,7 @@
     main{padding:20px 14px 130px}.section-head h2{font-size:24px}
     .col-legend,.match{grid-template-columns:24px 1fr 104px 34px}
     #demobar{flex-wrap:wrap;justify-content:center;border-radius:20px}.countdown .lbl{display:none}
+    .reveal-desktop{display:none}.reveal-mobile{display:block}
   }
 </style>
 </head>
@@ -363,7 +375,8 @@
         <div id="jorClasif"></div>
         <div id="coinCallout"></div>
         <div class="detail-h">El detalle, partido a partido</div>
-        <div class="reveal-wrap"><table class="reveal" id="revealtbl"></table></div>
+        <div class="reveal-wrap reveal-desktop"><table class="reveal" id="revealtbl"></table></div>
+        <div class="reveal-mobile" id="revealmob"></div>
         <div class="pleno-reveal" id="plenoReveal"></div>
       </div>
     </section>
@@ -966,11 +979,13 @@ async function showClosed(data){
 
 function renderRealReveal(partidos, resultados, pronos){
   const tbl=document.getElementById("revealtbl");
-  if(!pronos.length){ tbl.innerHTML='<tbody><tr><td style="padding:14px">Sin pronósticos.</td></tr></tbody>'; return; }
+  const mob=document.getElementById("revealmob");
+  if(!pronos.length){ tbl.innerHTML='<tbody><tr><td style="padding:14px">Sin pronósticos.</td></tr></tbody>'; if(mob) mob.innerHTML='<div class="mv-card">Sin pronósticos.</div>'; return; }
+  const totals=pronos.map(()=>0);
+  // ── versión escritorio: tabla partidos × personas ──
   let h=`<thead><tr><th class="match">Partido</th>`;
   pronos.forEach(p=>h+=`<th>${p.nombre||p.usuario}</th>`);
   h+=`</tr></thead><tbody>`;
-  const totals=pronos.map(()=>0);
   for(let i=0;i<14;i++){
     const f=partidos[i]||{local:"?",visitante:"?"};
     const res=resultados?resultados[i]:null;
@@ -990,6 +1005,18 @@ function renderRealReveal(partidos, resultados, pronos){
     h+=`</tr></tfoot>`;
   }
   tbl.innerHTML=h;
+  // ── versión móvil: una tarjeta por partido ──
+  if(mob){
+    let m="";
+    for(let i=0;i<14;i++){
+      const f=partidos[i]||{local:"?",visitante:"?"};
+      const res=resultados?resultados[i]:null;
+      m+=`<div class="mv-card"><div class="mv-head"><span class="mv-name">${i+1}. ${f.local} · ${f.visitante}${f.seg?'<span class="seg">2ª</span>':''}</span>${res?`<span class="mv-res">${res}</span>`:''}</div><div class="mv-chips">`;
+      m+= pronos.map(p=>{ const s=p.signos[i]||"·"; const hit=res&&s===res; return `<span class="mv-chip ${hit?'hit':''}">${p.nombre||p.usuario} <b>${s}</b></span>`; }).join("");
+      m+=`</div></div>`;
+    }
+    mob.innerHTML=m;
+  }
 }
 
 function renderRealClasif(rows){
