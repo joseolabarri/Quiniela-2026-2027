@@ -64,7 +64,7 @@
   .countdown .val{color:var(--ink);font-weight:700;font-size:14px}
   .userchip{display:flex;align-items:center;gap:9px;padding:4px 6px 4px 13px;background:var(--bg-soft2);border-radius:99px}
   .userchip .nm{font-size:13px;font-weight:600}
-  .userchip .av{width:27px;height:27px;border-radius:99px;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .userchip .av{width:27px;height:27px;border-radius:99px;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
   .logout{padding:7px 12px;border-radius:99px;background:var(--bg-soft2);color:var(--ink-2);font-size:12.5px;font-weight:600}
   .logout:hover{background:var(--red-soft);color:var(--red-deep)}
   .coupon.locked .opt{opacity:.5;cursor:not-allowed}
@@ -172,7 +172,7 @@
   .save{padding:12px 26px;border-radius:11px;background:var(--grad);color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 10px 22px -12px rgba(224,30,55,.6)}
   .save:hover{filter:brightness(1.04)}
 
-  .copita-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;border-radius:12px;background:var(--red-soft);border:1px solid #f3d2d5}
+  .copita-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;border-radius:var(--radius-sm);background:var(--grad-soft);border:1px solid #f3d2d5}
   .copita-bar .cup{font-size:22px}
   .copita-bar .txt{font-size:13.5px;color:var(--ink)}
   .copita-bar .txt b{font-weight:700}
@@ -189,9 +189,9 @@
   .pleno-row .x{color:var(--ink-3);font-weight:700}
 
   /* JORNADA CLASIFICACIÓN (cerrada) */
-  .jcl{border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
+  .jcl{border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px}
   .jcl .jh{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-  .jcl .jh .t{font-weight:800;font-size:16px}
+  .jcl .jh .t{font-family:var(--display);font-weight:700;font-size:16px}
   .jcl .jh .sub{font-size:12px;color:var(--ink-2);font-weight:600}
   .jcl table{border-collapse:collapse;width:100%;font-size:14px}
   .jcl td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -201,12 +201,12 @@
   .jcl tr.cop .pos{color:var(--red)}
   .jcl .nm{font-weight:600}
   .jcl .nm .note{display:block;font-size:11.5px;color:var(--ink-2);font-weight:500;margin-top:2px}
-  .jcl .pts{font-weight:800;text-align:center;width:54px;font-size:15px}
+  .jcl .pts{font-family:var(--display);font-weight:700;text-align:center;width:54px;font-size:15px}
   .jcl .stcell{text-align:right;width:150px}
   .jcl .st{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:99px;white-space:nowrap}
   .jcl .st.sigue{color:var(--green);background:var(--green-soft)}
   .jcl .st.desc{color:var(--ink-2);background:var(--bg-soft2)}
-  .jcl .st.cop{color:#fff;background:var(--red)}
+  .jcl .st.cop{color:#fff;background:var(--grad)}
   .jcl .st.coin{color:var(--amber-ink);background:#FFF1DC;border:1px solid var(--amber-line)}
   .coin-callout{padding:15px 16px;border-radius:12px;background:var(--amber-bg);border:1px solid var(--amber-line);font-size:13.5px;color:var(--ink);margin-bottom:16px}
   .coin-callout .ct{font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px}
@@ -234,7 +234,7 @@
   .mv-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
   .mv-name{font-weight:700;font-size:14px}
   .mv-name .seg{font-size:9px;font-weight:700;color:#fff;background:var(--ink-3);padding:1px 4px;border-radius:3px;margin-left:5px}
-  .mv-res{font-weight:800;color:#fff;background:var(--red);min-width:24px;text-align:center;border-radius:6px;padding:2px 8px;font-size:13px}
+  .mv-res{font-weight:800;color:#fff;background:var(--grad);min-width:24px;text-align:center;border-radius:7px;padding:2px 9px;font-size:13px}
   .mv-chips{display:flex;flex-wrap:wrap;gap:6px}
   .mv-chip{font-size:12.5px;padding:3px 9px;border-radius:6px;background:var(--bg-soft2);color:var(--ink-2);white-space:nowrap}
   .mv-chip b{color:var(--ink);margin-left:2px}
@@ -249,19 +249,20 @@
   /* CLASIFICACIÓN */
   .seg-toggle{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:3px}
   .seg-toggle button{padding:8px 16px;border-radius:99px;font-weight:600;font-size:13.5px;color:var(--ink-2)}
-  .seg-toggle button.on{background:var(--red);color:#fff}
+  .seg-toggle button.on{background:var(--grad);color:#fff;box-shadow:0 6px 14px -8px rgba(224,30,55,.7)}
   .standings{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
   table.std{border-collapse:collapse;width:100%;font-size:14px}
   table.std th,table.std td{padding:13px 14px;text-align:left;border-bottom:1px solid var(--line)}
   table.std tbody tr:last-child td{border-bottom:none}
   table.std thead th{font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-soft)}
   table.std td.c,table.std th.c{text-align:center}table.std td.r,table.std th.r{text-align:right}
-  table.std .pos{font-weight:800;color:var(--ink-3);width:30px}
+  table.std .pos{font-family:var(--display);font-weight:700;color:var(--ink-3);width:30px}
   table.std tr.top1 .pos,table.std tr.top2 .pos,table.std tr.top3 .pos{color:var(--red)}
   table.std tr.top1{background:linear-gradient(90deg,var(--red-soft),transparent 60%)}
+  table.std tr.top1 td:first-child{box-shadow:inset 3px 0 0 var(--red)}
   table.std .who{font-weight:600}
   table.std .who .eq{display:block;font-size:11.5px;color:var(--ink-3);font-weight:500;margin-top:1px}
-  table.std .total{font-weight:800;font-size:17px}
+  table.std .total{font-family:var(--display);font-weight:700;font-size:18px}
   table.std .money{color:var(--green);font-weight:700}
   table.std .cup{color:var(--red)}
   table.std .state{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:99px}
@@ -270,12 +271,12 @@
   table.std .dim{opacity:.55}
 
   .team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px}
-  .team-card{border:1px solid var(--line);border-radius:14px;background:#fff;overflow:hidden;box-shadow:var(--shadow)}
-  .team-card.lead{border:1.5px solid var(--red)}
+  .team-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;overflow:hidden;box-shadow:var(--shadow)}
+  .team-card.lead{border:1px solid transparent;box-shadow:var(--shadow-lg)}
   .team-card .th{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
-  .team-card.lead .th{background:var(--red);color:#fff}
-  .team-card .th .nm{font-weight:800;font-size:16px}
-  .team-card .th .tot{font-weight:800;font-size:20px}
+  .team-card.lead .th{background:var(--grad);color:#fff;border-bottom-color:transparent}
+  .team-card .th .nm{font-family:var(--display);font-weight:700;font-size:16px}
+  .team-card .th .tot{font-family:var(--display);font-weight:700;font-size:21px}
   .team-card.lead .th .tot{color:#fff}.team-card:not(.lead) .th .tot{color:var(--red)}
   .team-card .mem{display:flex;justify-content:space-between;padding:10px 16px;font-size:13.5px;border-bottom:1px solid var(--line)}
   .team-card .mem:last-child{border-bottom:none}
@@ -283,9 +284,9 @@
 
   /* TABLAS */
   .tablas-grid{display:grid;gap:14px}
-  .tb-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .tb-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
   .tb-card .tbh{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:13px;flex-wrap:wrap}
-  .tb-card .tbh .t{font-weight:800;font-size:16px}
+  .tb-card .tbh .t{font-family:var(--display);font-weight:700;font-size:16px}
   .tb-card .tbh .pts{font-size:11.5px;color:var(--red);font-weight:600}
   .single-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
   .single-row:last-child{border-bottom:none}
