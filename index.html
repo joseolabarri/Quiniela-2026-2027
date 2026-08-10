@@ -87,6 +87,23 @@
   .juega-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
   .juega-item{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:8px 10px;border:1.5px solid var(--line-2);border-radius:8px;cursor:pointer}
   .juega-item input{width:16px;height:16px;accent-color:var(--red)}
+  .tb-reveal-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .tb-reveal-row:last-child{border-bottom:none}
+  .tb-user{font-weight:600}
+  .tb-pick{padding:2px 9px;border-radius:6px}
+  .tb-hit{background:#EAF6EE;color:#1d7a4f}
+  .tb-part{background:#E6F1FB;color:#185FA5}
+  .tb-miss{color:#A32D2D}
+  .x2mini{font-size:10px;font-weight:800;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:0 4px;margin-left:5px}
+  .tb-reveal-wrap{overflow-x:auto;border-radius:8px}
+  .tb-reveal-tbl{border-collapse:collapse;width:100%;font-size:13px;min-width:420px}
+  .tb-reveal-tbl th,.tb-reveal-tbl td{padding:7px 9px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap}
+  .tb-reveal-tbl th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:700}
+  .tb-reveal-tbl td:first-child,.tb-reveal-tbl th:first-child{text-align:left}
+  .tb-reveal-tbl td.tb-hit{background:#EAF6EE;color:#1d7a4f;font-weight:600}
+  .tb-reveal-tbl td.tb-part{background:#E6F1FB;color:#185FA5;font-weight:600}
+  .tb-reveal-tbl td.tb-miss{color:#A32D2D}
+  .tb-reveal-tbl tr.tb-real td{background:var(--bg-soft2);font-weight:700;color:var(--red)}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -602,6 +619,7 @@ function renderTeams(){
 const opts=arr=>arr.map(o=>`<option>${o}</option>`).join("");
 const optsSel=(arr,cur)=>['',...arr].map(o=>`<option ${((cur||'')===o)?'selected':''}>${o||'—'}</option>`).join("");
 function renderTablas(){
+  if(window.TB_LOCKED) return;
   const T=window.MYTABLAS||{}; const su=T.sueltos||{};
   const dis=window.TB_LOCKED?'disabled':'';
   const P1=(window.POOL_PRIMERA&&window.POOL_PRIMERA.length)?window.POOL_PRIMERA:LIGA;
@@ -1381,11 +1399,52 @@ async function loadTablas(uid){
   window.TB_LOCKED = cierre ? (new Date()>=cierre) : false;
   const tn=document.getElementById("tbNotice");
   if(tn){
-    if(window.TB_LOCKED) tn.innerHTML='<span class="ic">🔓</span><span>El plazo de las tablas ha <b>cerrado</b>. Ya no se pueden cambiar. (El destape de las de todos llegará en el siguiente paso.)</span>';
+    if(window.TB_LOCKED) tn.innerHTML='<span class="ic">🔓</span><span>El plazo ha <b>cerrado</b>: aquí están las tablas de <b>todos</b>. Cuando metas los resultados reales, se marcarán en verde (pleno), azul (parcial) y rojo (fallo).</span>';
     else if(cierre) tn.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+cierre.toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+'</b>) <b>solo ves las tuyas</b>. Puedes editarlas hasta entonces.</span>';
     else tn.innerHTML='<span class="ic">🔒</span><span>Rellena tus tablas y guárdalas. <b>Solo ves las tuyas</b> hasta que se fije y pase la fecha de cierre.</span>';
   }
-  renderTablas();
+  if(window.TB_LOCKED){ await renderTablasReveal(); } else { renderTablas(); }
+}
+
+async function renderTablasReveal(){
+  const grid=document.getElementById("tablas-grid");
+  let people=[];
+  try{ const ts=await getDocs(collection(db,"tablas")); ts.forEach(d=>{const x=d.data(); people.push({usuario:x.usuario||d.id.slice(0,6), sueltos:x.sueltos||{}, doble:x.doble||"", champions:x.champions||[], p56:x.p56||[], desc2:x.desc2||[], asc:x.asc||[], rfef:x.rfef||[]});}); }catch(e){ people=[]; }
+  let real=null;
+  try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) real=rt.data(); }catch(e){}
+  if(!people.length){ grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">Todavía nadie ha rellenado sus tablas.</span></div>'; return; }
+  people.sort((a,b)=>a.usuario.localeCompare(b.usuario));
+  const N=tbNorm;
+  let html="";
+  const sueltos=[["campeon","Campeón de liga"],["pichichi","Pichichi"],["zarra","Trofeo Zarra"],["menosGoleado","Equipo menos goleado"],["maxGoleador","Equipo máximo goleador"],["primerDestituido","1º entrenador destituido"]];
+  sueltos.forEach(([k,label])=>{
+    const rv = real && real.sueltos ? real.sueltos[k] : null;
+    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span>${rv?`<span class="pts">real: ${rv}</span>`:''}</div>`;
+    html+= people.map(p=>{
+      const pick=p.sueltos[k]||"—";
+      const cls = (real&&rv) ? (N(pick)===N(rv)?"tb-hit":"tb-miss") : "";
+      const dbl = p.doble===k?'<span class="x2mini">×2</span>':'';
+      return `<div class="tb-reveal-row"><span class="tb-user">${p.usuario}</span><span class="tb-pick ${cls}">${pick}${dbl}</span></div>`;
+    }).join("");
+    html+=`</div>`;
+  });
+  const blocks=[["champions","Champions League (1º–4º)",4],["p56","Puestos 5º y 6º",2],["desc2","Descienden a 2ª",3],["asc","Ascienden a 1ª",3],["rfef","Descienden a 1ª RFEF",4]];
+  blocks.forEach(([k,label,n])=>{
+    const rarr = real && Array.isArray(real[k]) ? real[k] : null;
+    const rset = rarr ? rarr.map(N).filter(Boolean) : null;
+    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span></div><div class="tb-reveal-wrap"><table class="tb-reveal-tbl"><thead><tr><th>Participante</th>${Array.from({length:n},(_,i)=>`<th>${i+1}º</th>`).join("")}</tr></thead>`;
+    if(rarr){ html+=`<tr class="tb-real"><td>Real</td>${Array.from({length:n},(_,i)=>`<td>${rarr[i]||'—'}</td>`).join("")}</tr>`; }
+    html+=`<tbody>`+ people.map(p=>{
+      const arr=p[k]||[]; let cells="";
+      for(let i=0;i<n;i++){
+        const pick=arr[i]||"—"; let cls="";
+        if(rarr){ if(N(pick)===N(rarr[i])) cls="tb-hit"; else if(rset.includes(N(pick))) cls="tb-part"; else cls="tb-miss"; }
+        cells+=`<td class="${cls}">${pick}</td>`;
+      }
+      return `<tr><td class="tb-user">${p.usuario}</td>${cells}</tr>`;
+    }).join("")+`</tbody></table></div></div>`;
+  });
+  grid.innerHTML=html;
 }
 
 document.addEventListener("click", async (e)=>{
