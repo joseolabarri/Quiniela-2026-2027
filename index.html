@@ -340,12 +340,12 @@
 
     <section class="view" id="v-clasif">
       <div class="section-head">
-        <div><div class="eyebrow">General · tras Jornada 4</div><h2>Clasificación</h2></div>
+        <div><div class="eyebrow">General</div><h2>Clasificación</h2></div>
         <div class="seg-toggle"><button class="on" id="seg-ind" onclick="segView('ind')">Individual</button><button id="seg-eq" onclick="segView('eq')">Por equipos</button></div>
       </div>
       <div id="clasif-ind">
         <div class="standings"><table class="std">
-          <thead><tr><th class="pos">#</th><th>Participante</th><th class="c">J5</th><th class="r">€ ganado</th><th class="c">Copitas</th><th class="c">Tablas</th><th class="r">Total</th></tr></thead>
+          <thead><tr><th class="pos">#</th><th>Participante</th><th class="c">Copitas</th><th class="r">Puntos</th></tr></thead>
           <tbody id="std-body"></tbody>
         </table></div>
       </div>
@@ -578,22 +578,20 @@ function renderPlenoReveal(){
 }
 
 function renderStandings(){
-  let h="";
-  PARTS.forEach((p,i)=>{h+=`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+  const G=window.GENERAL;
+  if(!G){ document.getElementById("std-body").innerHTML='<tr><td colspan="4" style="padding:16px;color:var(--ink-2)">Cargando…</td></tr>'; return; }
+  if(!G.rows.length){ document.getElementById("std-body").innerHTML='<tr><td colspan="4" style="padding:16px;color:var(--ink-2)">Aún no hay participantes dados de alta.</td></tr>'; return; }
+  document.getElementById("std-body").innerHTML=G.rows.map((p,i)=>`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
     <td class="pos num">${i+1}</td>
-    <td class="who">${p.n}<span class="eq">${p.eq}</span></td>
-    <td class="c"><span class="state ${p.plays?'play':'rest'}">${p.plays?'Juega':'Descansa'}</span></td>
-    <td class="r ${p.money?'money':'dim'}">${p.money?p.money+'€':'—'}</td>
-    <td class="c"><span class="cup">🏆</span> ${p.cop}</td>
-    <td class="c num">${p.tablas}</td>
-    <td class="r total num">${p.total}</td></tr>`;});
-  document.getElementById("std-body").innerHTML=h;
+    <td class="who">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</td>
+    <td class="c"><span class="cup">🏆</span> ${p.copitas}</td>
+    <td class="r total num">${p.puntos}</td></tr>`).join("");
 }
 function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==="ind");document.getElementById("seg-eq").classList.toggle("on",w==="eq");document.getElementById("clasif-ind").style.display=w==="ind"?"block":"none";document.getElementById("clasif-eq").style.display=w==="eq"?"block":"none";}
 function renderTeams(){
-  const sums=TEAMS.map(t=>({nm:t,tot:PARTS.filter(p=>p.eq===t).reduce((a,p)=>a+p.total,0),mem:PARTS.filter(p=>p.eq===t)}));
-  sums.sort((a,b)=>b.tot-a.tot);
-  document.getElementById("team-grid").innerHTML=sums.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span>${m.n}</span><span class="pp num">${m.total}</span></div>`).join("")}</div>`).join("");
+  const G=window.GENERAL;
+  if(!G || !G.teams.length){ document.getElementById("team-grid").innerHTML='<div style="color:var(--ink-2)">Sin equipos todavía.</div>'; return; }
+  document.getElementById("team-grid").innerHTML=G.teams.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span>${m.nombre}</span><span class="pp num">${m.puntos}</span></div>`).join("")}</div>`).join("");
 }
 
 const opts=arr=>arr.map(o=>`<option>${o}</option>`).join("");
@@ -1144,6 +1142,7 @@ async function saveResultados(){
     await setDoc(doc(db,"jornadas",JID), { resultados, plenoResultado }, { merge:true });
     toast("Resultados guardados ✓", true);
     if(currentUid) loadJornada(currentUid);
+    loadGeneral();
   }catch(err){
     const code=(err&&err.code)?err.code:"";
     if(code.indexOf("permission-denied")>=0) toast("Solo el administrador puede guardar resultados.", false);
@@ -1224,6 +1223,58 @@ document.addEventListener("click", async (e)=>{
   }finally{ b.disabled=false; b.textContent=old; }
 });
 
+function scoreSignos(signos, resultados, partidos){
+  let pts=0,seg2=0,away=0,draw=0;
+  for(let i=0;i<14;i++){
+    if(signos[i] && signos[i]===resultados[i]){
+      pts++;
+      if(partidos[i]&&partidos[i].seg) seg2++;
+      if(resultados[i]==="2") away++;
+      if(resultados[i]==="X") draw++;
+    }
+  }
+  return {pts,seg2,away,draw};
+}
+
+async function loadGeneral(){
+  const acc={};
+  try{
+    const ps=await getDocs(collection(db,"participantes"));
+    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0}; });
+  }catch(e){}
+  let jornadas=[];
+  try{ const js=await getDocs(collection(db,"jornadas")); js.forEach(d=>jornadas.push({id:d.id,data:d.data()})); }catch(e){}
+  for(const j of jornadas){
+    const data=j.data;
+    const resultados=(Array.isArray(data.resultados)&&data.resultados.length===14)?data.resultados:null;
+    if(!resultados) continue;
+    const partidos=Array.isArray(data.partidos)?data.partidos:[];
+    let pron=[];
+    try{ const qs=await getDocs(collection(db,"jornadas",j.id,"pronosticos")); qs.forEach(d=>{const x=d.data(); pron.push({usuario:x.usuario||d.id, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null});}); }
+    catch(e){ continue; }
+    const scored=pron.map(p=>{
+      const sc=scoreSignos(p.signos,resultados,partidos);
+      let pts=sc.pts;
+      if(p.usuario===data.copita && data.plenoResultado && p.plenoPronostico
+         && Number(p.plenoPronostico.local)===Number(data.plenoResultado.local)
+         && Number(p.plenoPronostico.visitante)===Number(data.plenoResultado.visitante)) pts+=4;
+      return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw};
+    });
+    scored.forEach(s=>{ if(acc[s.usuario]) acc[s.usuario].puntos+=s.pts; });
+    if(scored.length){
+      scored.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+      const w=scored[0].usuario;
+      if(acc[w]) acc[w].copitas+=1;
+    }
+  }
+  const rows=Object.values(acc).sort((a,b)=> b.puntos-a.puntos || b.copitas-a.copitas || a.nombre.localeCompare(b.nombre));
+  const tm={};
+  rows.forEach(r=>{ const t=r.equipo||"—"; (tm[t]=tm[t]||[]).push(r); });
+  const teams=Object.keys(tm).map(t=>({nm:t, tot:tm[t].reduce((a,r)=>a+r.puntos,0), mem:tm[t]})).sort((a,b)=>b.tot-a.tot);
+  window.GENERAL={rows,teams};
+  renderStandings(); renderTeams();
+}
+
 onAuthStateChanged(auth, (u)=>{
   btn.disabled=false; btn.textContent="Entrar";
   if(u){
@@ -1233,6 +1284,7 @@ onAuthStateChanged(auth, (u)=>{
     loadJornada(u.uid);
     loadTablas(u.uid);
     checkAdmin(u.uid);
+    loadGeneral();
   }else{
     window.showLogin();
   }
