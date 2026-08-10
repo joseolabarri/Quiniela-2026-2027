@@ -686,7 +686,9 @@ const firebaseConfig = {
   appId: "1:65100035401:web:75d584e436b03b6a461698"
 };
 const DOMAIN = "laquiniela.app";
-const JID = "j05"; // jornada de prueba
+let ACTIVE_JID = null;   // jornada que ve la familia (config/estado.jornadaActual)
+let ADMIN_JID = null;    // jornada que el admin está editando
+const jid = n => "j" + ("0"+(parseInt(n,10)||1)).slice(-2);
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -744,9 +746,10 @@ async function loadJornada(uid){
   const coupon = document.getElementById("coupon");
 
   let jSnap=null;
-  try{ jSnap = await getDoc(doc(db,"jornadas",JID)); }catch(e){ jSnap=null; }
+  try{ const st=await getDoc(doc(db,"config","estado")); ACTIVE_JID = st.exists() ? (st.data().jornadaActual||null) : null; }catch(e){ ACTIVE_JID=null; }
+  if(ACTIVE_JID){ try{ jSnap = await getDoc(doc(db,"jornadas",ACTIVE_JID)); }catch(e){ jSnap=null; } }
 
-  if(!jSnap || !jSnap.exists()){
+  if(!ACTIVE_JID || !jSnap || !jSnap.exists()){
     jornadaExists=false;
     if(noticeEl) noticeEl.innerHTML='<span class="ic">⏳</span><span>Todavía no hay ninguna jornada publicada. En cuanto el administrador publique la jornada, aquí aparecerán los partidos.</span>';
     document.getElementById("cdval").textContent="—";
@@ -766,7 +769,7 @@ async function loadJornada(uid){
   window.__savedPleno = null;
 
   try{
-    const pSnap = await getDoc(doc(db,"jornadas",JID,"pronosticos",uid));
+    const pSnap = await getDoc(doc(db,"jornadas",ACTIVE_JID,"pronosticos",uid));
     if(pSnap.exists()){
       const pd=pSnap.data();
       if(Array.isArray(pd.signos)){
@@ -837,7 +840,7 @@ async function saveCoin(key){
   if(!sel) return;
   const winner=sel.value;
   try{
-    await setDoc(doc(db,"jornadas",JID), { moneda: { [key]: winner } }, { merge:true });
+    await setDoc(doc(db,"jornadas",ACTIVE_JID), { moneda: { [key]: winner } }, { merge:true });
     toast("Ganador de la moneda guardado ✓", true);
     if(currentUid){ await loadJornada(currentUid); }
     loadGeneral();
@@ -855,7 +858,7 @@ async function showClosed(data){
 
   let pronos=[];
   try{
-    const qs=await getDocs(collection(db,"jornadas",JID,"pronosticos"));
+    const qs=await getDocs(collection(db,"jornadas",ACTIVE_JID,"pronosticos"));
     qs.forEach(d=>{ const x=d.data(); pronos.push({usuario:x.usuario||d.id.slice(0,6), signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null}); });
   }catch(e){ pronos=[]; }
 
@@ -1011,7 +1014,7 @@ document.addEventListener("click", async (e)=>{
   }
   saveBtn.disabled=true; saveBtn.textContent="Guardando…";
   try{
-    await setDoc(doc(db,"jornadas",JID,"pronosticos",currentUid), payload, { merge:true });
+    await setDoc(doc(db,"jornadas",ACTIVE_JID,"pronosticos",currentUid), payload, { merge:true });
     toast("Pronósticos guardados ✓", true);
   }catch(err){
     const code=(err && err.code) ? err.code : "";
@@ -1039,8 +1042,11 @@ function toLocalInput(d){
 
 async function buildAdmin(){
   const body=document.getElementById("admin-body");
+  if(!ADMIN_JID){
+    try{ const st=await getDoc(doc(db,"config","estado")); ADMIN_JID = (st.exists() && st.data().jornadaActual) ? st.data().jornadaActual : "j01"; }catch(e){ ADMIN_JID="j01"; }
+  }
   let data={};
-  try{ const s=await getDoc(doc(db,"jornadas",JID)); if(s.exists()) data=s.data(); }catch(e){}
+  try{ const s=await getDoc(doc(db,"jornadas",ADMIN_JID)); if(s.exists()) data=s.data(); }catch(e){}
   let cfg={};
   try{ const c=await getDoc(doc(db,"config","tablas")); if(c.exists()) cfg=c.data(); }catch(e){}
   const tbCierre = cfg.cierre && cfg.cierre.toDate ? cfg.cierre.toDate() : (cfg.cierre? new Date(cfg.cierre):null);
@@ -1088,6 +1094,12 @@ async function buildAdmin(){
   }
 
   body.innerHTML=`
+    <div class="adm" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-weight:800">Editando la jornada Nº</span>
+      <input type="text" id="ax-num" value="${numero}" style="width:60px;text-align:center;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-family:inherit;font-size:14px">
+      <button class="pub" id="ax-load" style="background:var(--bg-soft2);color:var(--ink)">Cargar</button>
+      <span class="hint" style="margin:0">Activa para la familia: <b>${ACTIVE_JID?("Jornada "+parseInt(ACTIVE_JID.replace("j",""),10)):"ninguna"}</b>. Al publicar, esta pasa a ser la activa.</span>
+    </div>
     <div class="adm"><h4>Los 14 partidos</h4>
       <div class="adm-legend"><span></span><span>Local</span><span>Visitante</span><span>2ª</span></div>
       ${rows}
@@ -1097,10 +1109,7 @@ async function buildAdmin(){
         <div><label class="fl">Pleno · local</label><input type="text" id="ax-pl-local" value="${esc(pleno.local)}"></div>
         <div><label class="fl">Pleno · visitante</label><input type="text" id="ax-pl-visit" value="${esc(pleno.visitante)}"></div>
       </div>
-      <div class="row2">
-        <div><label class="fl">Copita (usuario)</label><input type="text" id="ax-copita" value="${esc(copita)}" placeholder="ej. prueba"></div>
-        <div><label class="fl">Nº de jornada</label><input type="text" id="ax-num" value="${numero}"></div>
-      </div>
+      <div><label class="fl">Copita (usuario)</label><input type="text" id="ax-copita" value="${esc(copita)}" placeholder="ej. leti"></div>
     </div>
     <div class="adm"><h4>Hora de cierre</h4>
       <input type="datetime-local" id="ax-cierre" value="${toLocalInput(cierre)}">
@@ -1154,6 +1163,7 @@ async function buildAdmin(){
       <div style="margin-top:14px"><button class="pub" id="ax-save-dinero">Guardar dinero</button></div>
     </div>`;
   document.getElementById("ax-publish").addEventListener("click", publishJornada);
+  document.getElementById("ax-load").addEventListener("click", loadAdminJornada);
   document.getElementById("ax-save-res").addEventListener("click", saveResultados);
   document.getElementById("ax-save-tbc").addEventListener("click", saveTablasCierre);
   document.getElementById("tr-form").innerHTML = tablasResultsHTML(p1arr, p2arr, realTb);
@@ -1163,6 +1173,13 @@ async function buildAdmin(){
   document.getElementById("alta-rows").innerHTML = altaRowHTML().repeat(4);
   document.getElementById("ax-add-row").addEventListener("click", ()=> document.getElementById("alta-rows").insertAdjacentHTML("beforeend", altaRowHTML()));
   document.getElementById("ax-create-parts").addEventListener("click", createParticipantes);
+}
+
+async function loadAdminJornada(){
+  const n=document.getElementById("ax-num").value;
+  ADMIN_JID = jid(n);
+  await buildAdmin();
+  toast("Cargada la Jornada "+(parseInt(n,10)||1), true);
 }
 
 async function saveDinero(){
@@ -1341,7 +1358,7 @@ async function saveResultados(){
   const plenoResultado={ local:document.getElementById("ax-plr-local").value.trim(), visitante:document.getElementById("ax-plr-visit").value.trim() };
   const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
   try{
-    await setDoc(doc(db,"jornadas",JID), { resultados, plenoResultado }, { merge:true });
+    await setDoc(doc(db,"jornadas",ADMIN_JID), { resultados, plenoResultado }, { merge:true });
     toast("Resultados guardados ✓", true);
     if(currentUid) loadJornada(currentUid);
     loadGeneral();
@@ -1361,16 +1378,20 @@ async function publishJornada(){
   for(let i=0;i<14;i++) partidos.push({local:locals[i]||"", visitante:visits[i]||"", seg:!!segs[i]});
   const pleno={local:document.getElementById("ax-pl-local").value.trim(), visitante:document.getElementById("ax-pl-visit").value.trim()};
   const copita=document.getElementById("ax-copita").value.trim().toLowerCase();
-  const numero=parseInt(document.getElementById("ax-num").value,10)||5;
+  const numero=parseInt(document.getElementById("ax-num").value,10)||1;
+  const targetJid=jid(numero);
   const cierreVal=document.getElementById("ax-cierre").value;
   if(!cierreVal){ toast("Pon una hora de cierre.", false); return; }
   const cierreTs=Timestamp.fromDate(new Date(cierreVal));
   const juegan=[...document.querySelectorAll(".jx:checked")].map(el=>el.dataset.uid);
   const old=bp.textContent; bp.disabled=true; bp.textContent="Publicando…";
   try{
-    await setDoc(doc(db,"jornadas",JID), { numero, partidos, pleno, copita, cierre: cierreTs, juegan }, { merge:true });
-    toast("Jornada publicada ✓", true);
+    await setDoc(doc(db,"jornadas",targetJid), { numero, partidos, pleno, copita, cierre: cierreTs, juegan }, { merge:true });
+    await setDoc(doc(db,"config","estado"), { jornadaActual: targetJid }, { merge:true });
+    ADMIN_JID=targetJid; ACTIVE_JID=targetJid;
+    toast("Jornada "+numero+" publicada ✓ (ya es la activa)", true);
     if(currentUid) loadJornada(currentUid);
+    loadGeneral();
   }catch(err){
     const code=(err&&err.code)?err.code:"";
     if(code.indexOf("permission-denied")>=0) toast("Solo el administrador puede publicar. Revisa tu ficha en 'participantes'.", false);
