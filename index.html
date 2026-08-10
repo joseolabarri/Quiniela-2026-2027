@@ -626,7 +626,7 @@ render();
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, Timestamp, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
@@ -713,13 +713,18 @@ async function loadJornada(uid){
     ? data.partidos.map(p=>[p.local||"", p.visitante||"", p.seg?1:0])
     : null;
   window.PLENO = (data.pleno && data.pleno.local) ? {home:data.pleno.local, away:data.pleno.visitante} : null;
+  window.ISCOPITA = !!(data.copita && window.MYUSER && window.MYUSER===data.copita);
+  window.__savedPleno = null;
 
   try{
     const pSnap = await getDoc(doc(db,"jornadas",JID,"pronosticos",uid));
-    if(pSnap.exists() && Array.isArray(pSnap.data().signos)){
-      const s=pSnap.data().signos.slice(0,14);
-      while(s.length<14) s.push(null);
-      window.myPred = s;
+    if(pSnap.exists()){
+      const pd=pSnap.data();
+      if(Array.isArray(pd.signos)){
+        const s=pd.signos.slice(0,14); while(s.length<14) s.push(null); window.myPred=s;
+      }
+      if(Array.isArray(pd.destacados)) window.myStars=new Set(pd.destacados);
+      if(pd.plenoPronostico) window.__savedPleno=pd.plenoPronostico;
     }
   }catch(e){}
 
@@ -733,15 +738,150 @@ async function loadJornada(uid){
   document.getElementById("cdval").textContent = locked ? "Cerrada" : label;
   document.getElementById("cd").classList.toggle("closed", locked);
 
-  if(noticeEl){
-    noticeEl.innerHTML = locked
-      ? '<span class="ic">🔒</span><span>La jornada ha <b>cerrado</b>. Ya no puedes cambiar tus pronósticos. (El destape con la clasificación real llegará en el siguiente paso.)</span>'
-      : '<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
+  window.render();
+
+  if(locked){
+    document.getElementById("open-state").style.display="none";
+    document.getElementById("closed-state").style.display="block";
+    await showClosed(data);
+  }else{
+    document.getElementById("open-state").style.display="block";
+    document.getElementById("closed-state").style.display="none";
+    coupon.classList.remove("locked");
+    if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
+    if(window.ISCOPITA && window.__savedPleno){
+      const rs=document.querySelectorAll("#pleno-block .roller");
+      if(rs.length===2){ rs[0].value=window.__savedPleno.local; rs[1].value=window.__savedPleno.visitante; }
+    }
+  }
+}
+
+async function showClosed(data){
+  const resultados = (Array.isArray(data.resultados)&&data.resultados.length===14) ? data.resultados : null;
+  const partidos = Array.isArray(data.partidos)?data.partidos:[];
+  const copita = data.copita||"";
+  const plenoReal = data.plenoResultado||null;
+
+  let pronos=[];
+  try{
+    const qs=await getDocs(collection(db,"jornadas",JID,"pronosticos"));
+    qs.forEach(d=>{ const x=d.data(); pronos.push({usuario:x.usuario||d.id.slice(0,6), signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null}); });
+  }catch(e){ pronos=[]; }
+
+  renderRealReveal(partidos, resultados, pronos);
+
+  const jorEl=document.getElementById("jorClasif");
+  const coinEl=document.getElementById("coinCallout");
+  const plEl=document.getElementById("plenoReveal");
+
+  if(!pronos.length){
+    jorEl.innerHTML='<div class="jcl"><div class="jh"><span class="t">Jornada cerrada</span></div><table><tbody><tr><td style="padding:16px">Nadie metió pronósticos en esta jornada.</td></tr></tbody></table></div>';
+    coinEl.innerHTML=""; plEl.innerHTML=""; return;
+  }
+  if(!resultados){
+    jorEl.innerHTML='<div class="jcl"><div class="jh"><span class="t">Jornada cerrada</span><span class="sub">Aún sin resultados</span></div><table><tbody><tr><td style="padding:16px">El administrador todavía no ha metido los resultados. En cuanto los meta (pestaña Admin), aquí saldrá la clasificación con los desempates.</td></tr></tbody></table></div>';
+    coinEl.innerHTML=""; plEl.innerHTML=""; return;
   }
 
-  window.render();
-  coupon.classList.toggle("locked", locked);
+  // ── calcular puntos y desempates ──
+  const rows=pronos.map(p=>{
+    let pts=0,seg2=0,away=0,draw=0;
+    for(let i=0;i<14;i++){
+      if(p.signos[i] && p.signos[i]===resultados[i]){
+        pts++;
+        if(partidos[i]&&partidos[i].seg) seg2++;
+        if(resultados[i]==="2") away++;
+        if(resultados[i]==="X") draw++;
+      }
+    }
+    const isCop=p.usuario===copita;
+    let plenoHit=false;
+    if(isCop && plenoReal && p.plenoPronostico){
+      plenoHit = (Number(p.plenoPronostico.local)===Number(plenoReal.local) && Number(p.plenoPronostico.visitante)===Number(plenoReal.visitante));
+      if(plenoHit) pts+=4;
+    }
+    return {usuario:p.usuario,isCop,plenoHit,pts,seg2,away,draw};
+  });
+  rows.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  rows.forEach((p,i)=>{
+    const prev=rows[i-1];
+    const same=(x,y)=>x&&y&&x.pts===y.pts&&x.seg2===y.seg2&&x.away===y.away&&x.draw===y.draw;
+    p.coin=same(p,rows[i-1])||same(p,rows[i+1]);
+    if(prev&&prev.pts===p.pts){
+      if(prev.seg2!==p.seg2) p.note=`Empate a ${p.pts} · desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
+      else if(prev.away!==p.away) p.note=`Empate a ${p.pts} · por visitantes (${p.away} vs ${prev.away})`;
+      else if(prev.draw!==p.draw) p.note=`Empate a ${p.pts} · por empates (${p.draw} vs ${prev.draw})`;
+      else p.note=`Empate a ${p.pts} · iguales en 2ª, visitantes y empates`;
+    }
+  });
+  renderRealClasif(rows);
+
+  // pleno destape (si hay copita con pronóstico)
+  const cop=pronos.find(p=>p.usuario===copita);
+  if(cop && cop.plenoPronostico && plenoReal){
+    const ok=Number(cop.plenoPronostico.local)===Number(plenoReal.local)&&Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
+    plEl.innerHTML=`<span class="tag">Pleno al 15</span><span class="body">Copita <b>${copita}</b> · <span class="sc">${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</span> &nbsp;·&nbsp; real <b class="sc">${plenoReal.local}–${plenoReal.visitante}</b> &nbsp;·&nbsp; ${ok?'<b style="color:var(--green)">+4 · se salva</b>':'<b style="color:var(--red)">fallado</b>'}</span>`;
+  }else{ plEl.innerHTML=""; }
+
+  // sorteo de moneda pendiente
+  const coinNames=rows.filter(p=>p.coin).map(p=>p.usuario);
+  if(coinNames.length>=2){
+    coinEl.innerHTML=`<div class="coin-callout"><div class="ct">🪙 Empate a sorteo de moneda</div>
+      <b>${coinNames.join("</b> y <b>")}</b> igualan puntos y los tres criterios (2ª, visitantes y empates). El desempate va a <b>sorteo de moneda</b>: lo decides tú, José, y de momento queda pendiente.</div>`;
+  }else{ coinEl.innerHTML=""; }
 }
+
+function renderRealReveal(partidos, resultados, pronos){
+  const tbl=document.getElementById("revealtbl");
+  if(!pronos.length){ tbl.innerHTML='<tbody><tr><td style="padding:14px">Sin pronósticos.</td></tr></tbody>'; return; }
+  let h=`<thead><tr><th class="match">Partido</th>`;
+  pronos.forEach(p=>h+=`<th>${p.usuario}</th>`);
+  h+=`</tr></thead><tbody>`;
+  const totals=pronos.map(()=>0);
+  for(let i=0;i<14;i++){
+    const f=partidos[i]||{local:"?",visitante:"?"};
+    const res=resultados?resultados[i]:null;
+    h+=`<tr><td class="match">${res?`<span class="res">${res}</span>`:''}${f.local} · ${f.visitante}${f.seg?'<span class="seg">2ª</span>':''}</td>`;
+    pronos.forEach((p,pi)=>{
+      const s=p.signos[i]||"·";
+      const hit = res && s===res;
+      if(hit) totals[pi]++;
+      h+=`<td class="pick ${hit?'hit':''}">${s}</td>`;
+    });
+    h+=`</tr>`;
+  }
+  h+=`</tbody>`;
+  if(resultados){
+    h+=`<tfoot><tr><td class="match">Puntos jornada</td>`;
+    totals.forEach(t=>h+=`<td class="tot num">${t}</td>`);
+    h+=`</tr></tfoot>`;
+  }
+  tbl.innerHTML=h;
+}
+
+function renderRealClasif(rows){
+  const n=rows.length;
+  const showRotation = n>=8;
+  let body="";
+  rows.forEach((p,i)=>{
+    let st,cls;
+    if(p.coin){ st="🪙 A sorteo"; cls="coin"; }
+    else if(i===0){ st="🏆 Copita"; cls="cop"; }
+    else if(showRotation && i>=n-4){ st="Descansa"; cls="desc"; }
+    else if(showRotation){ st="Sigue"; cls="sigue"; }
+    else { st=""; cls=""; }
+    body+=`<tr class="${i===0?'cop':''} ${p.coin?'coinrow':''}">
+      <td class="pos num">${i+1}º</td>
+      <td class="nm">${p.usuario}${p.isCop?' <span style="color:var(--red)">🏆</span>':''}${p.note?`<span class="note">${p.note}</span>`:''}</td>
+      <td class="pts num">${p.pts}</td>
+      <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td></tr>`;
+  });
+  document.getElementById("jorClasif").innerHTML=
+    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la jornada</span>
+      <span class="sub">${n} jugaron${showRotation?' · siguen 4 · descansan 4':''}</span></div>
+      <table><tbody>${body}</tbody></table></div>`;
+}
+
 
 document.addEventListener("click", async (e)=>{
   const saveBtn = e.target.closest(".save");
@@ -750,11 +890,15 @@ document.addEventListener("click", async (e)=>{
   if(window.LOCKED){ toast("La jornada ha cerrado.", false); return; }
   if(!currentUid) return;
   const signos = (window.myPred||[]).map(v=> v || null);
+  const payload = { signos: signos, usuario: window.MYUSER||"", actualizado: serverTimestamp() };
+  if(window.ISCOPITA){
+    const rs=document.querySelectorAll("#pleno-block .roller");
+    if(rs.length===2){ payload.plenoPronostico = { local: Number(rs[0].value)||0, visitante: Number(rs[1].value)||0 }; }
+    payload.destacados = [...(window.myStars||[])];
+  }
   saveBtn.disabled=true; saveBtn.textContent="Guardando…";
   try{
-    await setDoc(doc(db,"jornadas",JID,"pronosticos",currentUid),
-      { signos: signos, actualizado: serverTimestamp() },
-      { merge:true });
+    await setDoc(doc(db,"jornadas",JID,"pronosticos",currentUid), payload, { merge:true });
     toast("Pronósticos guardados ✓", true);
   }catch(err){
     const code=(err && err.code) ? err.code : "";
@@ -801,6 +945,20 @@ async function buildAdmin(){
       <label class="seg2"><input type="checkbox" class="ax-seg" ${f[2]?"checked":""}></label>
     </div>`;
   }
+  const res = Array.isArray(data.resultados)?data.resultados:[];
+  const plenoR = data.plenoResultado||{local:"",visitante:""};
+  let resRows="";
+  for(let i=0;i<14;i++){
+    const f=fx[i]||["","",0];
+    const cur=res[i]||"";
+    const opt=o=>`<option value="${o}" ${cur===o?"selected":""}>${o||"—"}</option>`;
+    resRows+=`<div class="adm-fix" style="grid-template-columns:26px 1fr 90px">
+      <span class="n">${i+1}</span>
+      <span style="font-size:13.5px;align-self:center">${esc(f[0])} · ${esc(f[1])}${f[2]?' <span class="seg" style="font-size:9px">2ª</span>':''}</span>
+      <select class="ax-res">${["","1","X","2"].map(opt).join("")}</select>
+    </div>`;
+  }
+
   body.innerHTML=`
     <div class="adm"><h4>Los 14 partidos</h4>
       <div class="adm-legend"><span></span><span>Local</span><span>Visitante</span><span>2ª</span></div>
@@ -820,8 +978,35 @@ async function buildAdmin(){
       <input type="datetime-local" id="ax-cierre" value="${toLocalInput(cierre)}">
       <div class="hint">Al publicar, la familia verá estos partidos y podrá meter sus pronósticos hasta esta hora. Puedes volver aquí y editarlos cuando quieras.</div>
       <div style="margin-top:14px"><button class="pub" id="ax-publish">Publicar jornada</button></div>
+    </div>
+    <div class="adm"><h4>Resultados reales</h4>
+      <div class="hint" style="margin:0 0 12px">Tras jugarse los partidos, marca el resultado real de cada uno y del Pleno, y guarda. Con esto se calcula la clasificación de la jornada cerrada.</div>
+      ${resRows}
+      <div class="row2" style="margin-top:12px">
+        <div><label class="fl">Pleno real · local</label><input type="text" id="ax-plr-local" value="${esc(plenoR.local)}"></div>
+        <div><label class="fl">Pleno real · visitante</label><input type="text" id="ax-plr-visit" value="${esc(plenoR.visitante)}"></div>
+      </div>
+      <div style="margin-top:14px"><button class="pub" id="ax-save-res">Guardar resultados</button></div>
     </div>`;
   document.getElementById("ax-publish").addEventListener("click", publishJornada);
+  document.getElementById("ax-save-res").addEventListener("click", saveResultados);
+}
+
+async function saveResultados(){
+  const bp=document.getElementById("ax-save-res");
+  const sels=[...document.querySelectorAll(".ax-res")].map(s=>s.value);
+  const resultados=sels.map(v=> (v==="1"||v==="X"||v==="2")?v:null);
+  const plenoResultado={ local:document.getElementById("ax-plr-local").value.trim(), visitante:document.getElementById("ax-plr-visit").value.trim() };
+  const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
+  try{
+    await setDoc(doc(db,"jornadas",JID), { resultados, plenoResultado }, { merge:true });
+    toast("Resultados guardados ✓", true);
+    if(currentUid) loadJornada(currentUid);
+  }catch(err){
+    const code=(err&&err.code)?err.code:"";
+    if(code.indexOf("permission-denied")>=0) toast("Solo el administrador puede guardar resultados.", false);
+    else toast("No se pudo guardar ("+(code||err.message)+").", false);
+  }finally{ bp.disabled=false; bp.textContent=old; }
 }
 
 async function publishJornada(){
@@ -861,6 +1046,7 @@ onAuthStateChanged(auth, (u)=>{
   btn.disabled=false; btn.textContent="Entrar";
   if(u){
     const name=(u.email||"").split("@")[0]||"usuario";
+    window.MYUSER=name;
     window.showAppFor(name);
     loadJornada(u.uid);
     checkAdmin(u.uid);
