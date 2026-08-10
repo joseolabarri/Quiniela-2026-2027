@@ -79,6 +79,8 @@
   .adm .pub{margin-top:4px;padding:12px 26px;border-radius:9px;background:var(--red);color:#fff;font-weight:700;font-size:15px}
   .adm .pub:hover{filter:brightness(1.05)}
   .adm .hint{font-size:12.5px;color:var(--ink-2);margin-top:12px;line-height:1.5}
+  .adm .ax-ta{width:100%;min-height:150px;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit;resize:vertical;line-height:1.6}
+  .adm .ax-ta:focus{outline:none;border-color:var(--red)}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -596,6 +598,8 @@ const optsSel=(arr,cur)=>['',...arr].map(o=>`<option ${((cur||'')===o)?'selected
 function renderTablas(){
   const T=window.MYTABLAS||{}; const su=T.sueltos||{};
   const dis=window.TB_LOCKED?'disabled':'';
+  const P1=(window.POOL_PRIMERA&&window.POOL_PRIMERA.length)?window.POOL_PRIMERA:LIGA;
+  const P2=(window.POOL_SEGUNDA&&window.POOL_SEGUNDA.length)?window.POOL_SEGUNDA:SEGUNDA;
   if(window.TB_DOUBLE==null) window.TB_DOUBLE = T.doble || "campeon";
   const singles=[
     {key:"campeon",lab:"Campeón de liga",type:"team"},
@@ -609,18 +613,18 @@ function renderTablas(){
   singles.forEach((row)=>{
     const cur=su[row.key]||"";
     const input=row.type==="team"
-      ? `<select id="tb-${row.key}" ${dis}>${optsSel(LIGA,cur)}</select>`
+      ? `<select id="tb-${row.key}" ${dis}>${optsSel(P1,cur)}</select>`
       : `<input id="tb-${row.key}" class="write" type="text" placeholder="${row.ph}" value="${(cur||'').replace(/"/g,'&quot;')}" ${dis}>`;
     const on=window.TB_DOUBLE===row.key?'on':'';
     s+=`<div class="single-row"><span class="lab">${row.lab}<span class="x2 ${on}" data-key="${row.key}" onclick="setDouble('${row.key}')">×2</span></span>${input}</div>`;
   });
   s+=`</div>`;
   const ordered=[
-    {key:"champions",t:"Champions League (1º–4º)",n:4,pts:"3 pts equipo · +5 posición exacta · +15 los 4",pool:LIGA},
-    {key:"p56",t:"Puestos 5º y 6º",n:2,pts:"3 pts equipo · +5 posición exacta",pool:LIGA},
-    {key:"desc2",t:"Descienden a 2ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:LIGA},
-    {key:"asc",t:"Ascienden a 1ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:SEGUNDA},
-    {key:"rfef",t:"Descienden a 1ª RFEF (4)",n:4,pts:"3 pts equipo · +5 exacta · +15 los 4",pool:SEGUNDA},
+    {key:"champions",t:"Champions League (1º–4º)",n:4,pts:"3 pts equipo · +5 posición exacta · +15 los 4",pool:P1},
+    {key:"p56",t:"Puestos 5º y 6º",n:2,pts:"3 pts equipo · +5 posición exacta",pool:P1},
+    {key:"desc2",t:"Descienden a 2ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:P1},
+    {key:"asc",t:"Ascienden a 1ª (3)",n:3,pts:"3 pts equipo · +5 exacta · +15 los 3",pool:P2},
+    {key:"rfef",t:"Descienden a 1ª RFEF (4)",n:4,pts:"3 pts equipo · +5 exacta · +15 los 4",pool:P2},
   ];
   ordered.forEach(o=>{
     const cur=Array.isArray(T[o.key])?T[o.key]:[];
@@ -628,7 +632,7 @@ function renderTablas(){
     for(let r=0;r<o.n;r++) s+=`<div class="ord-row"><span class="rank num">${r+1}º</span><select id="tb-${o.key}-${r}" ${dis}>${optsSel(o.pool,cur[r])}</select></div>`;
     s+=`</div></div>`;
   });
-  if(!window.TB_LOCKED) s+=`<div style="margin-top:4px"><button class="save tb-save">Guardar tablas</button></div>`;
+  s+=`<div style="margin-top:4px"><button class="save tb-save"${window.TB_LOCKED?' disabled style="opacity:.5;pointer-events:none"':''}>${window.TB_LOCKED?'Tablas cerradas':'Guardar tablas'}</button></div>`;
   document.getElementById("tablas-grid").innerHTML=s;
 }
 function setDouble(key){ if(window.TB_LOCKED)return; window.TB_DOUBLE=key; document.querySelectorAll("#tablas-grid .x2").forEach(el=>el.classList.toggle("on",el.dataset.key===key)); }
@@ -952,6 +956,10 @@ async function buildAdmin(){
   let cfg={};
   try{ const c=await getDoc(doc(db,"config","tablas")); if(c.exists()) cfg=c.data(); }catch(e){}
   const tbCierre = cfg.cierre && cfg.cierre.toDate ? cfg.cierre.toDate() : (cfg.cierre? new Date(cfg.cierre):null);
+  let eq={};
+  try{ const e=await getDoc(doc(db,"config","equipos")); if(e.exists()) eq=e.data(); }catch(e){}
+  const eqPrimera = Array.isArray(eq.primera)?eq.primera.join("\n"):"";
+  const eqSegunda = Array.isArray(eq.segunda)?eq.segunda.join("\n"):"";
   const fx = (Array.isArray(data.partidos)&&data.partidos.length)
     ? data.partidos.map(p=>[p.local||"",p.visitante||"",p.seg?1:0]) : DEF_FIX;
   const cierre = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre? new Date(data.cierre):null);
@@ -1016,10 +1024,35 @@ async function buildAdmin(){
       <div class="hint" style="margin:0 0 10px">Fecha límite para rellenar las tablas de pretemporada (14 ago 12:00). Al pasar, se destapan para todos.</div>
       <input type="datetime-local" id="ax-tb-cierre" value="${toLocalInput(tbCierre)}">
       <div style="margin-top:14px"><button class="pub" id="ax-save-tbc">Guardar cierre de tablas</button></div>
+    </div>
+    <div class="adm"><h4>Equipos para las Tablas</h4>
+      <div class="hint" style="margin:0 0 10px">Escribe un equipo por línea. Estas listas son las que saldrán en los desplegables de las Tablas. "Primera" se usa en campeón, Champions, 5º-6º y descensos a 2ª; "Segunda" en ascensos y descensos a 1ª RFEF.</div>
+      <div class="row2">
+        <div><label class="fl">Equipos de Primera</label><textarea id="ax-eq-primera" class="ax-ta" placeholder="Un equipo por línea">${eqPrimera}</textarea></div>
+        <div><label class="fl">Equipos de Segunda</label><textarea id="ax-eq-segunda" class="ax-ta" placeholder="Un equipo por línea">${eqSegunda}</textarea></div>
+      </div>
+      <div style="margin-top:12px"><button class="pub" id="ax-save-eq">Guardar equipos</button></div>
     </div>`;
   document.getElementById("ax-publish").addEventListener("click", publishJornada);
   document.getElementById("ax-save-res").addEventListener("click", saveResultados);
   document.getElementById("ax-save-tbc").addEventListener("click", saveTablasCierre);
+  document.getElementById("ax-save-eq").addEventListener("click", saveEquipos);
+}
+
+async function saveEquipos(){
+  const bp=document.getElementById("ax-save-eq");
+  const parse=id=>document.getElementById(id).value.split("\n").map(x=>x.trim()).filter(Boolean);
+  const primera=parse("ax-eq-primera"), segunda=parse("ax-eq-segunda");
+  const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
+  try{
+    await setDoc(doc(db,"config","equipos"), { primera, segunda }, { merge:true });
+    toast("Equipos guardados ✓", true);
+    if(currentUid) loadTablas(currentUid);
+  }catch(err){
+    const code=(err&&err.code)?err.code:"";
+    if(code.indexOf("permission-denied")>=0) toast("Solo el administrador puede editar los equipos.", false);
+    else toast("No se pudo guardar ("+(code||err.message)+").", false);
+  }finally{ bp.disabled=false; bp.textContent=old; }
 }
 
 async function saveTablasCierre(){
@@ -1090,6 +1123,7 @@ async function checkAdmin(uid){
 
 async function loadTablas(uid){
   window.MYTABLAS=null; window.TB_DOUBLE=null; window.TB_LOCKED=false;
+  try{ const eq=await getDoc(doc(db,"config","equipos")); if(eq.exists()){ const ed=eq.data(); window.POOL_PRIMERA=Array.isArray(ed.primera)?ed.primera:null; window.POOL_SEGUNDA=Array.isArray(ed.segunda)?ed.segunda:null; } }catch(e){}
   let cierre=null;
   try{ const c=await getDoc(doc(db,"config","tablas")); if(c.exists()){ const cd=c.data(); cierre = cd.cierre&&cd.cierre.toDate?cd.cierre.toDate():(cd.cierre?new Date(cd.cierre):null); } }catch(e){}
   try{ const t=await getDoc(doc(db,"tablas",uid)); if(t.exists()){ window.MYTABLAS=t.data(); window.TB_DOUBLE=t.data().doble||"campeon"; } }catch(e){}
