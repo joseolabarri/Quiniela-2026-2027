@@ -81,6 +81,9 @@
   .adm .hint{font-size:12.5px;color:var(--ink-2);margin-top:12px;line-height:1.5}
   .adm .ax-ta{width:100%;min-height:150px;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit;resize:vertical;line-height:1.6}
   .adm .ax-ta:focus{outline:none;border-color:var(--red)}
+  .alta-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+  .alta-row input{padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit;min-width:0}
+  .alta-row input:focus{outline:none;border-color:var(--red)}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -650,7 +653,7 @@ render();
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, serverTimestamp, Timestamp, collection, getDocs } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -1032,11 +1035,66 @@ async function buildAdmin(){
         <div><label class="fl">Equipos de Segunda</label><textarea id="ax-eq-segunda" class="ax-ta" placeholder="Un equipo por línea">${eqSegunda}</textarea></div>
       </div>
       <div style="margin-top:12px"><button class="pub" id="ax-save-eq">Guardar equipos</button></div>
+    </div>
+    <div class="adm"><h4>Alta de participantes</h4>
+      <div class="hint" style="margin:0 0 12px">Crea de una vez los usuarios de la familia. Se crean su acceso (usuario + clave) y su ficha (nombre + equipo). Si un usuario ya existe, se actualiza su ficha. Tu sesión de administrador no se pierde.</div>
+      <div class="alta-row" style="font-size:11px;color:var(--ink-3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px"><span>Usuario</span><span>Nombre</span><span>Equipo</span><span>Clave</span></div>
+      <div id="alta-rows"></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <button class="pub" id="ax-add-row" style="background:var(--bg-soft2);color:var(--ink)">+ Añadir fila</button>
+        <button class="pub" id="ax-create-parts">Crear participantes</button>
+      </div>
+      <div id="alta-status" class="hint"></div>
     </div>`;
   document.getElementById("ax-publish").addEventListener("click", publishJornada);
   document.getElementById("ax-save-res").addEventListener("click", saveResultados);
   document.getElementById("ax-save-tbc").addEventListener("click", saveTablasCierre);
   document.getElementById("ax-save-eq").addEventListener("click", saveEquipos);
+  document.getElementById("alta-rows").innerHTML = altaRowHTML().repeat(4);
+  document.getElementById("ax-add-row").addEventListener("click", ()=> document.getElementById("alta-rows").insertAdjacentHTML("beforeend", altaRowHTML()));
+  document.getElementById("ax-create-parts").addEventListener("click", createParticipantes);
+}
+
+function altaRowHTML(){
+  return `<div class="alta-row"><input class="al-user" placeholder="usuario" autocapitalize="none" spellcheck="false"><input class="al-nombre" placeholder="nombre"><input class="al-equipo" placeholder="equipo"><input class="al-clave" placeholder="clave"></div>`;
+}
+
+let _secAuth=null;
+function getSecondaryAuth(){ if(!_secAuth){ const a=initializeApp(firebaseConfig,"alta"); _secAuth=getAuth(a); } return _secAuth; }
+
+async function createParticipantes(){
+  const status=document.getElementById("alta-status");
+  const rows=[...document.querySelectorAll(".alta-row")].filter(r=>r.querySelector(".al-user"));
+  const sec=getSecondaryAuth();
+  let done=0, failed=0; const errs=[];
+  status.textContent="Creando…";
+  for(const r of rows){
+    const usuario=r.querySelector(".al-user").value.trim().toLowerCase();
+    const nombre=r.querySelector(".al-nombre").value.trim();
+    const equipo=r.querySelector(".al-equipo").value.trim();
+    const clave=r.querySelector(".al-clave").value;
+    if(!usuario || !clave) continue;
+    const email=usuario+"@"+DOMAIN;
+    let uid=null;
+    try{
+      const cred=await createUserWithEmailAndPassword(sec, email, clave);
+      uid=cred.user.uid;
+    }catch(err){
+      const code=(err&&err.code)||"";
+      if(code.indexOf("email-already-in-use")>=0){
+        try{ const c=await signInWithEmailAndPassword(sec, email, clave); uid=c.user.uid; }
+        catch(e){ failed++; errs.push(usuario+" (clave no coincide)"); continue; }
+      } else if(code.indexOf("weak-password")>=0){ failed++; errs.push(usuario+" (clave <6)"); continue; }
+      else { failed++; errs.push(usuario+" ("+code+")"); continue; }
+    }
+    try{
+      await setDoc(doc(db,"participantes",uid), { usuario, nombre, equipo, esAdmin:false }, { merge:true });
+      done++;
+    }catch(e){ failed++; errs.push(usuario+" (ficha)"); }
+  }
+  try{ await signOut(sec); }catch(e){}
+  status.textContent = `Hecho: ${done} creados/actualizados`+(failed?` · ${failed} con problema: ${errs.join(", ")}`:"");
+  toast("Participantes: "+done+" ok"+(failed?", "+failed+" con problema":""), !failed);
 }
 
 async function saveEquipos(){
