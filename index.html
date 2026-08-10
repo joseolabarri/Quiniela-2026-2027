@@ -451,9 +451,9 @@ function showAppFor(name){
   const pretty=name.charAt(0).toUpperCase()+name.slice(1);
   document.getElementById("uname").textContent=pretty;
   document.getElementById("uav").textContent=pretty.charAt(0).toUpperCase();
-  ROLE=(name==="admin"||name==="jose")?"admin":"part";
-  document.getElementById("r-part").classList.toggle("on",ROLE==="part");
-  document.getElementById("r-admin").classList.toggle("on",ROLE==="admin");
+  ROLE="part";
+  document.getElementById("tab-admin").style.display="none";
+  go("jornada");
   render();
 }
 function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");}
@@ -1066,14 +1066,17 @@ async function createParticipantes(){
   const status=document.getElementById("alta-status");
   const rows=[...document.querySelectorAll(".alta-row")].filter(r=>r.querySelector(".al-user"));
   const sec=getSecondaryAuth();
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let done=0, failed=0; const errs=[];
-  status.textContent="Creando…";
+  const total=rows.filter(r=>r.querySelector(".al-user").value.trim() && r.querySelector(".al-clave").value).length;
+  let idx=0;
   for(const r of rows){
     const usuario=r.querySelector(".al-user").value.trim().toLowerCase();
     const nombre=r.querySelector(".al-nombre").value.trim();
     const equipo=r.querySelector(".al-equipo").value.trim();
     const clave=r.querySelector(".al-clave").value;
     if(!usuario || !clave) continue;
+    idx++; status.textContent=`Creando ${idx}/${total}…`;
     const email=usuario+"@"+DOMAIN;
     let uid=null;
     try{
@@ -1083,14 +1086,16 @@ async function createParticipantes(){
       const code=(err&&err.code)||"";
       if(code.indexOf("email-already-in-use")>=0){
         try{ const c=await signInWithEmailAndPassword(sec, email, clave); uid=c.user.uid; }
-        catch(e){ failed++; errs.push(usuario+" (clave no coincide)"); continue; }
-      } else if(code.indexOf("weak-password")>=0){ failed++; errs.push(usuario+" (clave <6)"); continue; }
-      else { failed++; errs.push(usuario+" ("+code+")"); continue; }
+        catch(e){ failed++; errs.push(usuario+" (clave no coincide con la ya existente)"); continue; }
+      } else if(code.indexOf("weak-password")>=0){ failed++; errs.push(usuario+" (clave de menos de 6)"); continue; }
+      else if(code.indexOf("too-many-requests")>=0){ failed++; errs.push(usuario+" (límite temporal: espera un minuto y reintenta)"); continue; }
+      else { failed++; errs.push(usuario+" ("+(code||err.message||"error")+")"); continue; }
     }
     try{
       await setDoc(doc(db,"participantes",uid), { usuario, nombre, equipo, esAdmin:false }, { merge:true });
       done++;
-    }catch(e){ failed++; errs.push(usuario+" (ficha)"); }
+    }catch(e){ failed++; errs.push(usuario+" (no se pudo guardar la ficha)"); }
+    await sleep(700);
   }
   try{ await signOut(sec); }catch(e){}
   status.textContent = `Hecho: ${done} creados/actualizados`+(failed?` · ${failed} con problema: ${errs.join(", ")}`:"");
@@ -1176,7 +1181,11 @@ async function checkAdmin(uid){
   try{ const s=await getDoc(doc(db,"participantes",uid)); admin = s.exists() && s.data().esAdmin===true; }catch(e){ admin=false; }
   const tab=document.getElementById("tab-admin");
   if(admin){ window.ROLE="admin"; tab.style.display=""; buildAdmin(); }
-  else { tab.style.display="none"; }
+  else {
+    window.ROLE="part"; tab.style.display="none";
+    const act=document.querySelector(".tab.active");
+    if(act && act.dataset.v==="admin") go("jornada");
+  }
 }
 
 async function loadTablas(uid){
