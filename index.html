@@ -84,6 +84,9 @@
   .alta-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px}
   .alta-row input{padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit;min-width:0}
   .alta-row input:focus{outline:none;border-color:var(--red)}
+  .juega-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .juega-item{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:8px 10px;border:1.5px solid var(--line-2);border-radius:8px;cursor:pointer}
+  .juega-item input{width:16px;height:16px;accent-color:var(--red)}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -345,7 +348,7 @@
       </div>
       <div id="clasif-ind">
         <div class="standings"><table class="std">
-          <thead><tr><th class="pos">#</th><th>Participante</th><th class="c">Copitas</th><th class="r">Puntos</th></tr></thead>
+          <thead><tr><th class="pos">#</th><th>Participante</th><th class="r">€</th><th class="c">Copitas</th><th class="c">Tablas</th><th class="r">Puntos</th></tr></thead>
           <tbody id="std-body"></tbody>
         </table></div>
       </div>
@@ -579,12 +582,14 @@ function renderPlenoReveal(){
 
 function renderStandings(){
   const G=window.GENERAL;
-  if(!G){ document.getElementById("std-body").innerHTML='<tr><td colspan="4" style="padding:16px;color:var(--ink-2)">Cargando…</td></tr>'; return; }
-  if(!G.rows.length){ document.getElementById("std-body").innerHTML='<tr><td colspan="4" style="padding:16px;color:var(--ink-2)">Aún no hay participantes dados de alta.</td></tr>'; return; }
+  if(!G){ document.getElementById("std-body").innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--ink-2)">Cargando…</td></tr>'; return; }
+  if(!G.rows.length){ document.getElementById("std-body").innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--ink-2)">Aún no hay participantes dados de alta.</td></tr>'; return; }
   document.getElementById("std-body").innerHTML=G.rows.map((p,i)=>`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
     <td class="pos num">${i+1}</td>
     <td class="who">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</td>
+    <td class="r ${p.dinero?'money':'dim'}">${p.dinero?p.dinero+'€':'—'}</td>
     <td class="c"><span class="cup">🏆</span> ${p.copitas}</td>
+    <td class="c num">${p.tablas}</td>
     <td class="r total num">${p.puntos}</td></tr>`).join("");
 }
 function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==="ind");document.getElementById("seg-eq").classList.toggle("on",w==="eq");document.getElementById("clasif-ind").style.display=w==="ind"?"block":"none";document.getElementById("clasif-eq").style.display=w==="eq"?"block":"none";}
@@ -755,29 +760,36 @@ async function loadJornada(uid){
   }catch(e){}
 
   const now=new Date();
-  const locked = cierreDate ? (now >= cierreDate) : false;
-  window.LOCKED = locked;
+  const closed = cierreDate ? (now >= cierreDate) : false;
+  const juegan = Array.isArray(data.juegan) ? data.juegan : [];
+  const descansa = juegan.length>0 && !juegan.includes(uid);
+  window.LOCKED = closed || descansa;
 
   const label = cierreDate
     ? cierreDate.toLocaleString("es-ES",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
     : "sin fecha";
-  document.getElementById("cdval").textContent = locked ? "Cerrada" : label;
-  document.getElementById("cd").classList.toggle("closed", locked);
+  document.getElementById("cdval").textContent = closed ? "Cerrada" : label;
+  document.getElementById("cd").classList.toggle("closed", closed);
 
   window.render();
 
-  if(locked){
+  if(closed){
     document.getElementById("open-state").style.display="none";
     document.getElementById("closed-state").style.display="block";
     await showClosed(data);
   }else{
     document.getElementById("open-state").style.display="block";
     document.getElementById("closed-state").style.display="none";
-    coupon.classList.remove("locked");
-    if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
-    if(window.ISCOPITA && window.__savedPleno){
-      const rs=document.querySelectorAll("#pleno-block .roller");
-      if(rs.length===2){ rs[0].value=window.__savedPleno.local; rs[1].value=window.__savedPleno.visitante; }
+    if(descansa){
+      coupon.classList.add("locked");
+      if(noticeEl) noticeEl.innerHTML='<span class="ic">😴</span><span>Esta jornada <b>descansas</b>: no te toca jugar, así que no puedes meter pronóstico. Vuelves la próxima.</span>';
+    }else{
+      coupon.classList.remove("locked");
+      if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
+      if(window.ISCOPITA && window.__savedPleno){
+        const rs=document.querySelectorAll("#pleno-block .roller");
+        if(rs.length===2){ rs[0].value=window.__savedPleno.local; rs[1].value=window.__savedPleno.visitante; }
+      }
     }
   }
 }
@@ -961,6 +973,10 @@ async function buildAdmin(){
   try{ const e=await getDoc(doc(db,"config","equipos")); if(e.exists()) eq=e.data(); }catch(e){}
   const eqPrimera = Array.isArray(eq.primera)?eq.primera.join("\n"):"";
   const eqSegunda = Array.isArray(eq.segunda)?eq.segunda.join("\n"):"";
+  let parts=[];
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,dinero:x.dinero||0});}); }catch(e){}
+  parts.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const juegan = Array.isArray(data.juegan)?data.juegan:[];
   const fx = (Array.isArray(data.partidos)&&data.partidos.length)
     ? data.partidos.map(p=>[p.local||"",p.visitante||"",p.seg?1:0]) : DEF_FIX;
   const cierre = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre? new Date(data.cierre):null);
@@ -1012,6 +1028,10 @@ async function buildAdmin(){
       <div class="hint">Al publicar, la familia verá estos partidos y podrá meter sus pronósticos hasta esta hora. Puedes volver aquí y editarlos cuando quieras.</div>
       <div style="margin-top:14px"><button class="pub" id="ax-publish">Publicar jornada</button></div>
     </div>
+    <div class="adm"><h4>Quién juega esta jornada</h4>
+      <div class="hint" style="margin:0 0 10px">Marca a los que juegan. Los no marcados <b>no podrán</b> meter pronóstico esta jornada (descansan). Se guarda al pulsar "Publicar jornada". Si no marcas a nadie, se entiende que juegan todos.</div>
+      <div class="juega-grid">${parts.map(p=>`<label class="juega-item"><input type="checkbox" class="jx" data-uid="${p.uid}" ${juegan.includes(p.uid)?"checked":""}> ${p.nombre}</label>`).join("") || '<span class="hint" style="margin:0">Aún no hay participantes dados de alta.</span>'}</div>
+    </div>
     <div class="adm"><h4>Resultados reales</h4>
       <div class="hint" style="margin:0 0 12px">Tras jugarse los partidos, marca el resultado real de cada uno y del Pleno, y guarda. Con esto se calcula la clasificación de la jornada cerrada.</div>
       ${resRows}
@@ -1043,14 +1063,34 @@ async function buildAdmin(){
         <button class="pub" id="ax-create-parts">Crear participantes</button>
       </div>
       <div id="alta-status" class="hint"></div>
+    </div>
+    <div class="adm"><h4>Dinero ganado</h4>
+      <div class="hint" style="margin:0 0 12px">Escribe cuánto lleva ganado en total cada persona (en €). Aparece en la clasificación general. Lo actualizas tú cuando alguien gane algo.</div>
+      ${parts.map(p=>`<div class="single-row"><span class="lab">${p.nombre}</span><input type="text" class="dx" data-uid="${p.uid}" value="${p.dinero||0}" style="min-width:110px;text-align:right"></div>`).join("") || '<span class="hint" style="margin:0">Aún no hay participantes.</span>'}
+      <div style="margin-top:14px"><button class="pub" id="ax-save-dinero">Guardar dinero</button></div>
     </div>`;
   document.getElementById("ax-publish").addEventListener("click", publishJornada);
   document.getElementById("ax-save-res").addEventListener("click", saveResultados);
   document.getElementById("ax-save-tbc").addEventListener("click", saveTablasCierre);
   document.getElementById("ax-save-eq").addEventListener("click", saveEquipos);
+  const dineroBtn=document.getElementById("ax-save-dinero"); if(dineroBtn) dineroBtn.addEventListener("click", saveDinero);
   document.getElementById("alta-rows").innerHTML = altaRowHTML().repeat(4);
   document.getElementById("ax-add-row").addEventListener("click", ()=> document.getElementById("alta-rows").insertAdjacentHTML("beforeend", altaRowHTML()));
   document.getElementById("ax-create-parts").addEventListener("click", createParticipantes);
+}
+
+async function saveDinero(){
+  const bp=document.getElementById("ax-save-dinero");
+  const items=[...document.querySelectorAll(".dx")];
+  const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
+  let ok=0, bad=0;
+  for(const el of items){
+    const uid=el.dataset.uid; const dinero=Number(String(el.value).replace(",", "."))||0;
+    try{ await setDoc(doc(db,"participantes",uid), { dinero }, { merge:true }); ok++; }catch(e){ bad++; }
+  }
+  bp.disabled=false; bp.textContent=old;
+  toast(bad? ("Guardados "+ok+", "+bad+" con error") : "Dinero guardado ✓", !bad);
+  loadGeneral();
 }
 
 function altaRowHTML(){
@@ -1163,9 +1203,10 @@ async function publishJornada(){
   const cierreVal=document.getElementById("ax-cierre").value;
   if(!cierreVal){ toast("Pon una hora de cierre.", false); return; }
   const cierreTs=Timestamp.fromDate(new Date(cierreVal));
+  const juegan=[...document.querySelectorAll(".jx:checked")].map(el=>el.dataset.uid);
   const old=bp.textContent; bp.disabled=true; bp.textContent="Publicando…";
   try{
-    await setDoc(doc(db,"jornadas",JID), { numero, partidos, pleno, copita, cierre: cierreTs }, { merge:true });
+    await setDoc(doc(db,"jornadas",JID), { numero, partidos, pleno, copita, cierre: cierreTs, juegan }, { merge:true });
     toast("Jornada publicada ✓", true);
     if(currentUid) loadJornada(currentUid);
   }catch(err){
@@ -1240,7 +1281,7 @@ async function loadGeneral(){
   const acc={};
   try{
     const ps=await getDocs(collection(db,"participantes"));
-    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0}; });
+    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:Number(x.tablasPuntos)||0}; });
   }catch(e){}
   let jornadas=[];
   try{ const js=await getDocs(collection(db,"jornadas")); js.forEach(d=>jornadas.push({id:d.id,data:d.data()})); }catch(e){}
@@ -1267,7 +1308,7 @@ async function loadGeneral(){
       if(acc[w]) acc[w].copitas+=1;
     }
   }
-  const rows=Object.values(acc).sort((a,b)=> b.puntos-a.puntos || b.copitas-a.copitas || a.nombre.localeCompare(b.nombre));
+  const rows=Object.values(acc).sort((a,b)=> b.puntos-a.puntos || b.dinero-a.dinero || b.copitas-a.copitas || b.tablas-a.tablas || a.nombre.localeCompare(b.nombre));
   const tm={};
   rows.forEach(r=>{ const t=r.equipo||"—"; (tm[t]=tm[t]||[]).push(r); });
   const teams=Object.keys(tm).map(t=>({nm:t, tot:tm[t].reduce((a,r)=>a+r.puntos,0), mem:tm[t]})).sort((a,b)=>b.tot-a.tot);
