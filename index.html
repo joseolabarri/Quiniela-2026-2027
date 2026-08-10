@@ -104,6 +104,16 @@
   .tb-reveal-tbl td.tb-part{background:#E6F1FB;color:#185FA5;font-weight:600}
   .tb-reveal-tbl td.tb-miss{color:#A32D2D}
   .tb-reveal-tbl tr.tb-real td{background:var(--bg-soft2);font-weight:700;color:var(--red)}
+  .tb-block-row{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tb-block-row:last-child{border-bottom:none}
+  .tb-block-row .tb-user{min-width:88px;flex-shrink:0}
+  .tb-chips{display:flex;flex-wrap:wrap;gap:5px}
+  .tb-chip{font-size:12px;padding:2px 8px;border-radius:6px;background:var(--bg-soft2);color:var(--ink-2);white-space:nowrap}
+  .tb-chip .p{font-weight:700;opacity:.6;margin-right:3px}
+  .tb-chip.tb-hit{background:#EAF6EE;color:#1d7a4f}
+  .tb-chip.tb-part{background:#E6F1FB;color:#185FA5}
+  .tb-chip.tb-miss{background:transparent;color:#A32D2D;border:1px solid #F0C4C4}
+  .tb-real-chip{background:var(--red-soft);color:var(--red-deep);font-weight:700}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -319,9 +329,9 @@
 <div id="app">
   <header class="topbar">
     <div class="wordmark">La Quiniela <span>26·27</span></div>
-    <div class="jornada-pill">Jornada <b>5</b> · 38</div>
+    <div class="jornada-pill">Jornada <b id="jpill-num">—</b> · 38</div>
     <div class="spacer"></div>
-    <div class="countdown" id="cd"><span class="dot"></span><span><span class="lbl">Cierre</span> <span class="val" id="cdval">Sáb 13:55</span></span></div>
+    <div class="countdown" id="cd"><span class="dot"></span><span><span class="lbl">Cierre</span> <span class="val" id="cdval">—</span></span></div>
     <div class="userchip"><span class="nm" id="uname">Leti I</span><span class="av" id="uav">L</span></div>
     <button class="logout" id="logoutBtn" title="Salir" aria-label="Salir">Salir</button>
   </header>
@@ -337,7 +347,7 @@
   <main>
     <section class="view active" id="v-jornada">
       <div class="section-head">
-        <div><div class="eyebrow">Jornada 5</div><h2>Tus pronósticos</h2></div>
+        <div><div class="eyebrow" id="jor-eyebrow">Jornada —</div><h2>Tus pronósticos</h2></div>
         <p id="jor-sub">14 partidos a 1·X·2. Acertar cada uno suma 1 punto.</p>
       </div>
 
@@ -373,7 +383,7 @@
     </section>
 
     <section class="view" id="v-tablas">
-      <div class="section-head"><div><div class="eyebrow">Pronósticos previos · cierre 14 ago 12:00</div><h2>Las Tablas</h2></div><p>Se rellenan una vez antes de empezar. Valen mucho y deciden empates en la general.</p></div>
+      <div class="section-head"><div><div class="eyebrow">Pronósticos previos de temporada</div><h2>Las Tablas</h2></div><p>Se rellenan una vez antes de empezar. Valen mucho y deciden empates en la general.</p></div>
       <div class="notice lock" id="tbNotice"><span class="ic">🔒</span><span>Igual que la jornada: hasta el 14 de agosto <b>solo ves las tuyas</b>; al cerrar se destapan las de todos.</span></div>
       <div class="tablas-grid" id="tablas-grid"></div>
     </section>
@@ -482,8 +492,6 @@ function setState(s){STATE=s;document.getElementById("s-open").classList.toggle(
 function setCopita(b){ISCOPITA=b;document.getElementById("c-yes").classList.toggle("on",b);document.getElementById("c-no").classList.toggle("on",!b);render();}
 
 function render(){
-  const cd=document.getElementById("cd");cd.classList.toggle("closed",STATE==="closed");
-  document.getElementById("cdval").textContent=STATE==="closed"?"Cerrada":"Sáb 13:55";
   document.getElementById("open-state").style.display=STATE==="open"?"block":"none";
   document.getElementById("closed-state").style.display=STATE==="closed"?"block":"none";
   if(STATE==="open"){renderCoupon();renderCopita();renderPleno();}
@@ -494,7 +502,7 @@ function render(){
 
 function renderCoupon(){
   const cop=ISCOPITA;
-  let h=`<div class="coupon-head"><span class="ttl">Boleto · Jornada 5</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"1 local · X empate · 2 visitante"}</span></div>
+  let h=`<div class="coupon-head"><span class="ttl">Boleto · Jornada ${window.JNUM||"—"}</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"1 local · X empate · 2 visitante"}</span></div>
     <div class="col-legend"><span>Nº</span><span>Partido</span><span class="opts"><span>1</span><span>X</span><span>2</span></span><span class="sth">${cop?"★":""}</span></div>`;
   const FX=(window.FIXTURES&&window.FIXTURES.length)?window.FIXTURES:FIX;
   FX.forEach((f,i)=>{const sel=myPred[i];
@@ -562,7 +570,7 @@ function renderJornadaClasif(){
       <td class="stcell"><span class="st ${cls}">${st}</span></td></tr>`;
   });
   document.getElementById("jorClasif").innerHTML=
-    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la Jornada 5</span>
+    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la Jornada ${window.JNUM||"—"}</span>
       <span class="sub">8 jugaron · siguen 4 · descansan 4</span></div>
       <table><tbody>${rows}</tbody></table></div>`;
 
@@ -751,6 +759,9 @@ async function loadJornada(uid){
 
   if(!ACTIVE_JID || !jSnap || !jSnap.exists()){
     jornadaExists=false;
+    window.JNUM="—";
+    const jp=document.getElementById("jpill-num"); if(jp) jp.textContent="—";
+    const je=document.getElementById("jor-eyebrow"); if(je) je.textContent="Jornada —";
     if(noticeEl) noticeEl.innerHTML='<span class="ic">⏳</span><span>Todavía no hay ninguna jornada publicada. En cuanto el administrador publique la jornada, aquí aparecerán los partidos.</span>';
     document.getElementById("cdval").textContent="—";
     window.render(); coupon.classList.add("locked");
@@ -759,6 +770,10 @@ async function loadJornada(uid){
 
   jornadaExists=true;
   const data=jSnap.data();
+  const numero = data.numero || parseInt(ACTIVE_JID.replace("j",""),10) || 1;
+  window.JNUM = numero;
+  const jp=document.getElementById("jpill-num"); if(jp) jp.textContent=numero;
+  const je=document.getElementById("jor-eyebrow"); if(je) je.textContent="Jornada "+numero;
   cierreDate = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre ? new Date(data.cierre) : null);
   window.COPITA = data.copita || "—";
   window.FIXTURES = Array.isArray(data.partidos) && data.partidos.length
@@ -856,10 +871,12 @@ async function showClosed(data){
   const copita = data.copita||"";
   const plenoReal = data.plenoResultado||null;
 
+  const nombreDe={}; const vivos=new Set();
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario);}); }catch(e){}
   let pronos=[];
   try{
     const qs=await getDocs(collection(db,"jornadas",ACTIVE_JID,"pronosticos"));
-    qs.forEach(d=>{ const x=d.data(); pronos.push({usuario:x.usuario||d.id.slice(0,6), signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null}); });
+    qs.forEach(d=>{ const x=d.data(); const u=x.usuario||d.id.slice(0,6); if(vivos.size && !vivos.has(u)) return; pronos.push({usuario:u, nombre:nombreDe[u]||u, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null}); });
   }catch(e){ pronos=[]; }
 
   renderRealReveal(partidos, resultados, pronos);
@@ -894,7 +911,7 @@ async function showClosed(data){
       plenoHit = (Number(p.plenoPronostico.local)===Number(plenoReal.local) && Number(p.plenoPronostico.visitante)===Number(plenoReal.visitante));
       if(plenoHit) pts+=4;
     }
-    return {usuario:p.usuario,isCop,plenoHit,pts,seg2,away,draw};
+    return {usuario:p.usuario,nombre:p.nombre,isCop,plenoHit,pts,seg2,away,draw};
   });
   rows.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
   const cg = applyCoin(rows, data.moneda);
@@ -931,18 +948,18 @@ async function showClosed(data){
   if(pendingGroups.length){
     if(window.ROLE==="admin"){
       coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Sorteo de moneda pendiente</div>
-        Empate entre <b>${g.members.map(m=>m.usuario).join("</b>, <b>")}</b>, iguales en todo. Elige quién ganó la moneda:
+        Empate entre <b>${g.members.map(m=>m.nombre).join("</b>, <b>")}</b>, iguales en todo. Elige quién ganó la moneda:
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select class="coin-sel" data-key="${g.key}">${g.members.map(m=>`<option value="${m.usuario}">${m.usuario}</option>`).join("")}</select>
+          <select class="coin-sel" data-key="${g.key}">${g.members.map(m=>`<option value="${m.usuario}">${m.nombre}</option>`).join("")}</select>
           <button class="pub coin-save" data-key="${g.key}">Guardar ganador</button>
         </div></div>`).join("");
       coinEl.querySelectorAll(".coin-save").forEach(b=>b.addEventListener("click", ()=> saveCoin(b.dataset.key)));
     } else {
       coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Empate a sorteo de moneda</div>
-        <b>${g.members.map(m=>m.usuario).join("</b> y <b>")}</b> igualan puntos y los tres criterios. El desempate lo decide José por sorteo de moneda; de momento queda pendiente.</div>`).join("");
+        <b>${g.members.map(m=>m.nombre).join("</b> y <b>")}</b> igualan puntos y los tres criterios. El desempate lo decide José por sorteo de moneda; de momento queda pendiente.</div>`).join("");
     }
   } else {
-    const won=rows.filter(r=>r.note && r.note.indexOf("ganó la moneda")>=0).map(r=>r.usuario);
+    const won=rows.filter(r=>r.note && r.note.indexOf("ganó la moneda")>=0).map(r=>r.nombre);
     coinEl.innerHTML = won.length ? `<div class="coin-callout"><div class="ct">🪙 Sorteo resuelto</div>Ganó la moneda: <b>${won.join(", ")}</b>.</div>` : "";
   }
 }
@@ -951,7 +968,7 @@ function renderRealReveal(partidos, resultados, pronos){
   const tbl=document.getElementById("revealtbl");
   if(!pronos.length){ tbl.innerHTML='<tbody><tr><td style="padding:14px">Sin pronósticos.</td></tr></tbody>'; return; }
   let h=`<thead><tr><th class="match">Partido</th>`;
-  pronos.forEach(p=>h+=`<th>${p.usuario}</th>`);
+  pronos.forEach(p=>h+=`<th>${p.nombre||p.usuario}</th>`);
   h+=`</tr></thead><tbody>`;
   const totals=pronos.map(()=>0);
   for(let i=0;i<14;i++){
@@ -988,7 +1005,7 @@ function renderRealClasif(rows){
     else { st=""; cls=""; }
     body+=`<tr class="${i===0?'cop':''} ${p.coin?'coinrow':''}">
       <td class="pos num">${i+1}º</td>
-      <td class="nm">${p.usuario}${p.isCop?' <span style="color:var(--red)">🏆</span>':''}${p.note?`<span class="note">${p.note}</span>`:''}</td>
+      <td class="nm">${p.nombre||p.usuario}${p.isCop?' <span style="color:var(--red)">🏆</span>':''}${p.note?`<span class="note">${p.note}</span>`:''}</td>
       <td class="pts num">${p.pts}</td>
       <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td></tr>`;
   });
@@ -1429,12 +1446,19 @@ async function loadTablas(uid){
 
 async function renderTablasReveal(){
   const grid=document.getElementById("tablas-grid");
+  grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">Cargando el destape…</span></div>';
+  // participantes actuales (para no mostrar datos de usuarios borrados)
+  const nombreDe={}; const vivos=new Set();
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario);}); }catch(e){}
   let people=[];
-  try{ const ts=await getDocs(collection(db,"tablas")); ts.forEach(d=>{const x=d.data(); people.push({usuario:x.usuario||d.id.slice(0,6), sueltos:x.sueltos||{}, doble:x.doble||"", champions:x.champions||[], p56:x.p56||[], desc2:x.desc2||[], asc:x.asc||[], rfef:x.rfef||[]});}); }catch(e){ people=[]; }
+  try{
+    const ts=await getDocs(collection(db,"tablas"));
+    ts.forEach(d=>{const x=d.data(); if(x.usuario && vivos.has(x.usuario)) people.push({usuario:x.usuario, nombre:nombreDe[x.usuario]||x.usuario, sueltos:x.sueltos||{}, doble:x.doble||"", champions:x.champions||[], p56:x.p56||[], desc2:x.desc2||[], asc:x.asc||[], rfef:x.rfef||[]});});
+  }catch(e){ grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">No se pudieron cargar las tablas de todos. Asegúrate de que el plazo de las tablas ya ha cerrado.</span></div>'; return; }
   let real=null;
   try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) real=rt.data(); }catch(e){}
-  if(!people.length){ grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">Todavía nadie ha rellenado sus tablas.</span></div>'; return; }
-  people.sort((a,b)=>a.usuario.localeCompare(b.usuario));
+  if(!people.length){ grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">Todavía nadie de la familia ha rellenado sus tablas.</span></div>'; return; }
+  people.sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const N=tbNorm;
   let html="";
   const sueltos=[["campeon","Campeón de liga"],["pichichi","Pichichi"],["zarra","Trofeo Zarra"],["menosGoleado","Equipo menos goleado"],["maxGoleador","Equipo máximo goleador"],["primerDestituido","1º entrenador destituido"]];
@@ -1445,7 +1469,7 @@ async function renderTablasReveal(){
       const pick=p.sueltos[k]||"—";
       const cls = (real&&rv) ? (N(pick)===N(rv)?"tb-hit":"tb-miss") : "";
       const dbl = p.doble===k?'<span class="x2mini">×2</span>':'';
-      return `<div class="tb-reveal-row"><span class="tb-user">${p.usuario}</span><span class="tb-pick ${cls}">${pick}${dbl}</span></div>`;
+      return `<div class="tb-reveal-row"><span class="tb-user">${p.nombre}</span><span class="tb-pick ${cls}">${pick}${dbl}</span></div>`;
     }).join("");
     html+=`</div>`;
   });
@@ -1453,17 +1477,18 @@ async function renderTablasReveal(){
   blocks.forEach(([k,label,n])=>{
     const rarr = real && Array.isArray(real[k]) ? real[k] : null;
     const rset = rarr ? rarr.map(N).filter(Boolean) : null;
-    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span></div><div class="tb-reveal-wrap"><table class="tb-reveal-tbl"><thead><tr><th>Participante</th>${Array.from({length:n},(_,i)=>`<th>${i+1}º</th>`).join("")}</tr></thead>`;
-    if(rarr){ html+=`<tr class="tb-real"><td>Real</td>${Array.from({length:n},(_,i)=>`<td>${rarr[i]||'—'}</td>`).join("")}</tr>`; }
-    html+=`<tbody>`+ people.map(p=>{
-      const arr=p[k]||[]; let cells="";
-      for(let i=0;i<n;i++){
+    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span></div>`;
+    if(rarr){ html+=`<div class="tb-block-row"><span class="tb-user">Real</span><span class="tb-chips">${Array.from({length:n},(_,i)=>`<span class="tb-chip tb-real-chip"><span class="p">${i+1}</span>${rarr[i]||'—'}</span>`).join("")}</span></div>`; }
+    html+= people.map(p=>{
+      const arr=p[k]||[];
+      const chips=Array.from({length:n},(_,i)=>{
         const pick=arr[i]||"—"; let cls="";
         if(rarr){ if(N(pick)===N(rarr[i])) cls="tb-hit"; else if(rset.includes(N(pick))) cls="tb-part"; else cls="tb-miss"; }
-        cells+=`<td class="${cls}">${pick}</td>`;
-      }
-      return `<tr><td class="tb-user">${p.usuario}</td>${cells}</tr>`;
-    }).join("")+`</tbody></table></div></div>`;
+        return `<span class="tb-chip ${cls}"><span class="p">${i+1}</span>${pick}</span>`;
+      }).join("");
+      return `<div class="tb-block-row"><span class="tb-user">${p.nombre}</span><span class="tb-chips">${chips}</span></div>`;
+    }).join("");
+    html+=`</div>`;
   });
   grid.innerHTML=html;
 }
