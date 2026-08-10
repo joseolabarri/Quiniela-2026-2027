@@ -58,6 +58,12 @@
   .userchip .av{width:27px;height:27px;border-radius:99px;background:var(--red);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
   .logout{padding:7px 12px;border-radius:99px;background:var(--bg-soft2);color:var(--ink-2);font-size:12.5px;font-weight:600}
   .logout:hover{background:var(--red-soft);color:var(--red-deep)}
+  .coupon.locked .opt{opacity:.5;cursor:not-allowed}
+  .coupon.locked .save{opacity:.5;pointer-events:none}
+  .coupon.locked .star button{opacity:.5;cursor:not-allowed}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;background:var(--ink);box-shadow:0 10px 30px -8px rgba(0,0,0,.4);opacity:0;transition:opacity .25s;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+  #toast.ok{background:var(--green)}
+  #toast.err{background:var(--red)}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -295,7 +301,7 @@
       </div>
 
       <div id="open-state">
-        <div class="notice lock"><span class="ic">🔒</span><span>Hasta el cierre, <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos cuantas veces quieras antes del sábado a las 13:55.</span></div>
+        <div class="notice lock" id="jNotice"><span class="ic">🔒</span><span>Hasta el cierre, <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos cuantas veces quieras antes del cierre.</span></div>
         <div id="copita-block"></div>
         <div class="coupon" id="coupon"></div>
         <div id="pleno-block"></div>
@@ -403,15 +409,15 @@ const HITS={
 const wrong=r=>(r!=="1"?"1":"X");
 const predOf=name=>{const h=HITS[name];return RESULTS.map((r,i)=>h.includes(i)?r:wrong(r));};
 
-let ROLE="part",STATE="open",ISCOPITA=false;
-let myPred=predOf("Leti I").slice();
-let myStars=new Set();
+var ROLE="part",STATE="open",ISCOPITA=false;
+var myPred=predOf("Leti I").slice();
+var myStars=new Set();
 
 function showLogin(){document.getElementById("login").style.display="flex";document.getElementById("app").style.display="none";document.getElementById("demobar").style.display="none";}
 function showAppFor(name){
   document.getElementById("login").style.display="none";
   document.getElementById("app").style.display="flex";
-  document.getElementById("demobar").style.display="flex";
+  document.getElementById("demobar").style.display="none";
   const pretty=name.charAt(0).toUpperCase()+name.slice(1);
   document.getElementById("uname").textContent=pretty;
   document.getElementById("uav").textContent=pretty.charAt(0).toUpperCase();
@@ -451,13 +457,13 @@ function renderCoupon(){
     <button class="save">${ROLE==="admin"?"Publicar jornada":"Guardar pronósticos"}</button></div>`;
   document.getElementById("coupon").innerHTML=h;
 }
-function pick(i,o){myPred[i]=o;renderCoupon();}
-function toggleStar(i){if(myStars.has(i))myStars.delete(i);else if(myStars.size<8)myStars.add(i);renderCoupon();}
+function pick(i,o){if(window.LOCKED)return;myPred[i]=o;renderCoupon();}
+function toggleStar(i){if(window.LOCKED)return;if(myStars.has(i))myStars.delete(i);else if(myStars.size<8)myStars.add(i);renderCoupon();}
 
 function renderCopita(){const el=document.getElementById("copita-block");
   el.innerHTML=ISCOPITA
     ?`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">Esta semana eres la <b>copita</b>. Rellena el <b>Pleno al 15</b> del partido que ha puesto Loterías y marca tus <b>8 destacados</b> (★) — los destacados no puntúan en la porra, son para tu control.</span></div>`
-    :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">La copita de esta jornada es <b>Carlos</b>. Él rellena el Pleno al 15. Si lo clava, se salva de descansar.</span></div>`;
+    :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">La copita de esta jornada es <b>${window.COPITA||"—"}</b>. Rellena el Pleno al 15. Si lo clava, se salva de descansar.</span></div>`;
 }
 function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
   el.innerHTML=`<div class="pleno"><div class="ph"><span class="t">Pleno al 15</span><span class="v">Resultado exacto · 4 puntos · partido fijado por Loterías</span></div>
@@ -593,6 +599,7 @@ render();
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
@@ -603,9 +610,11 @@ const firebaseConfig = {
   appId: "1:65100035401:web:75d584e436b03b6a461698"
 };
 const DOMAIN = "laquiniela.app";
+const JID = "j05"; // jornada de prueba
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 const btn = document.getElementById("loginBtn");
 const errEl = document.getElementById("loginErr");
@@ -641,11 +650,96 @@ uEl.addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
 pEl.addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
 document.getElementById("logoutBtn").addEventListener("click", ()=> signOut(auth));
 
+function toast(msg, ok=true){
+  let t=document.getElementById("toast");
+  if(!t){ t=document.createElement("div"); t.id="toast"; document.body.appendChild(t); }
+  t.textContent=msg; t.className = ok ? "ok" : "err"; t.style.opacity="1";
+  clearTimeout(window.__tt); window.__tt=setTimeout(()=>{ t.style.opacity="0"; }, 2800);
+}
+
+let currentUid=null, cierreDate=null, jornadaExists=false;
+
+async function loadJornada(uid){
+  currentUid = uid;
+  window.myPred = new Array(14).fill(null);
+  window.myStars = new Set();
+  window.LOCKED = true;
+  const noticeEl = document.getElementById("jNotice");
+  const coupon = document.getElementById("coupon");
+
+  let jSnap=null;
+  try{ jSnap = await getDoc(doc(db,"jornadas",JID)); }catch(e){ jSnap=null; }
+
+  if(!jSnap || !jSnap.exists()){
+    jornadaExists=false;
+    if(noticeEl) noticeEl.innerHTML='<span class="ic">⏳</span><span>Todavía no hay ninguna jornada publicada. En cuanto el administrador publique la jornada, aquí aparecerán los partidos.</span>';
+    document.getElementById("cdval").textContent="—";
+    window.render(); coupon.classList.add("locked");
+    return;
+  }
+
+  jornadaExists=true;
+  const data=jSnap.data();
+  cierreDate = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre ? new Date(data.cierre) : null);
+  window.COPITA = data.copita || "—";
+
+  try{
+    const pSnap = await getDoc(doc(db,"jornadas",JID,"pronosticos",uid));
+    if(pSnap.exists() && Array.isArray(pSnap.data().signos)){
+      const s=pSnap.data().signos.slice(0,14);
+      while(s.length<14) s.push(null);
+      window.myPred = s;
+    }
+  }catch(e){}
+
+  const now=new Date();
+  const locked = cierreDate ? (now >= cierreDate) : false;
+  window.LOCKED = locked;
+
+  const label = cierreDate
+    ? cierreDate.toLocaleString("es-ES",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
+    : "sin fecha";
+  document.getElementById("cdval").textContent = locked ? "Cerrada" : label;
+  document.getElementById("cd").classList.toggle("closed", locked);
+
+  if(noticeEl){
+    noticeEl.innerHTML = locked
+      ? '<span class="ic">🔒</span><span>La jornada ha <b>cerrado</b>. Ya no puedes cambiar tus pronósticos. (El destape con la clasificación real llegará en el siguiente paso.)</span>'
+      : '<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
+  }
+
+  window.render();
+  coupon.classList.toggle("locked", locked);
+}
+
+document.addEventListener("click", async (e)=>{
+  const saveBtn = e.target.closest(".save");
+  if(!saveBtn) return;
+  if(!jornadaExists){ toast("No hay ninguna jornada publicada todavía.", false); return; }
+  if(window.LOCKED){ toast("La jornada ha cerrado.", false); return; }
+  if(!currentUid) return;
+  const signos = (window.myPred||[]).map(v=> v || null);
+  saveBtn.disabled=true; saveBtn.textContent="Guardando…";
+  try{
+    await setDoc(doc(db,"jornadas",JID,"pronosticos",currentUid),
+      { signos: signos, actualizado: serverTimestamp() },
+      { merge:true });
+    toast("Pronósticos guardados ✓", true);
+  }catch(err){
+    const code=(err && err.code) ? err.code : "";
+    if(code.indexOf("permission-denied")>=0) toast("La jornada ha cerrado, no se pudo guardar.", false);
+    else toast("No se pudo guardar ("+(code||err.message)+").", false);
+  }finally{
+    saveBtn.disabled=false; saveBtn.textContent = (window.ROLE==="admin") ? "Publicar jornada" : "Guardar pronósticos";
+  }
+});
+
 onAuthStateChanged(auth, (u)=>{
-  btn.disabled = false; btn.textContent = "Entrar";
+  btn.disabled=false; btn.textContent="Entrar";
   if(u){
-    const name = (u.email || "").split("@")[0] || "usuario";
+    const name=(u.email||"").split("@")[0]||"usuario";
     window.showAppFor(name);
+    loadJornada(u.uid);
   }else{
     window.showLogin();
   }
