@@ -794,6 +794,41 @@ async function loadJornada(uid){
   }
 }
 
+function coinGroups(sorted){
+  const groups=[]; let i=0;
+  const same=(a,b)=>a.pts===b.pts&&a.seg2===b.seg2&&a.away===b.away&&a.draw===b.draw;
+  while(i<sorted.length){ let j=i; while(j+1<sorted.length && same(sorted[j+1],sorted[i])) j++; if(j>i) groups.push([i,j]); i=j+1; }
+  return groups;
+}
+function applyCoin(sorted, moneda){
+  moneda=moneda||{};
+  const groups=coinGroups(sorted);
+  groups.forEach(([a,b])=>{
+    const members=sorted.slice(a,b+1);
+    const key=members.map(m=>m.usuario).sort().join("|");
+    const winner=moneda[key];
+    if(winner){
+      const reordered=[...members.filter(m=>m.usuario===winner), ...members.filter(m=>m.usuario!==winner)];
+      for(let k=0;k<reordered.length;k++) sorted[a+k]=reordered[k];
+    }
+  });
+  return {groups};
+}
+async function saveCoin(key){
+  const sel=document.querySelector('.coin-sel[data-key="'+key+'"]');
+  if(!sel) return;
+  const winner=sel.value;
+  try{
+    await setDoc(doc(db,"jornadas",JID), { moneda: { [key]: winner } }, { merge:true });
+    toast("Ganador de la moneda guardado ✓", true);
+    if(currentUid){ await loadJornada(currentUid); }
+    loadGeneral();
+  }catch(err){
+    const code=(err&&err.code)?err.code:"";
+    toast(code.indexOf("permission-denied")>=0?"Solo el administrador puede.":"No se pudo guardar ("+(code||err.message)+").", false);
+  }
+}
+
 async function showClosed(data){
   const resultados = (Array.isArray(data.resultados)&&data.resultados.length===14) ? data.resultados : null;
   const partidos = Array.isArray(data.partidos)?data.partidos:[];
@@ -841,16 +876,26 @@ async function showClosed(data){
     return {usuario:p.usuario,isCop,plenoHit,pts,seg2,away,draw};
   });
   rows.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  const cg = applyCoin(rows, data.moneda);
   rows.forEach((p,i)=>{
     const prev=rows[i-1];
-    const same=(x,y)=>x&&y&&x.pts===y.pts&&x.seg2===y.seg2&&x.away===y.away&&x.draw===y.draw;
-    p.coin=same(p,rows[i-1])||same(p,rows[i+1]);
-    if(prev&&prev.pts===p.pts){
+    if(prev && prev.pts===p.pts){
       if(prev.seg2!==p.seg2) p.note=`Empate a ${p.pts} · desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
       else if(prev.away!==p.away) p.note=`Empate a ${p.pts} · por visitantes (${p.away} vs ${prev.away})`;
       else if(prev.draw!==p.draw) p.note=`Empate a ${p.pts} · por empates (${p.draw} vs ${prev.draw})`;
-      else p.note=`Empate a ${p.pts} · iguales en 2ª, visitantes y empates`;
+      else p.note=`Empate a ${p.pts}`;
     }
+  });
+  const pendingGroups=[];
+  cg.groups.forEach(([a,b])=>{
+    const members=rows.slice(a,b+1);
+    const key=members.map(m=>m.usuario).sort().join("|");
+    const winner=(data.moneda||{})[key];
+    members.forEach(m=>{
+      m.coin=!winner;
+      m.note = winner ? (m.usuario===winner?"🪙 ganó la moneda":"🪙 perdió la moneda") : `Empate a ${m.pts} · a sorteo`;
+    });
+    if(!winner) pendingGroups.push({key, members});
   });
   renderRealClasif(rows);
 
@@ -861,12 +906,24 @@ async function showClosed(data){
     plEl.innerHTML=`<span class="tag">Pleno al 15</span><span class="body">Copita <b>${copita}</b> · <span class="sc">${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</span> &nbsp;·&nbsp; real <b class="sc">${plenoReal.local}–${plenoReal.visitante}</b> &nbsp;·&nbsp; ${ok?'<b style="color:var(--green)">+4 · se salva</b>':'<b style="color:var(--red)">fallado</b>'}</span>`;
   }else{ plEl.innerHTML=""; }
 
-  // sorteo de moneda pendiente
-  const coinNames=rows.filter(p=>p.coin).map(p=>p.usuario);
-  if(coinNames.length>=2){
-    coinEl.innerHTML=`<div class="coin-callout"><div class="ct">🪙 Empate a sorteo de moneda</div>
-      <b>${coinNames.join("</b> y <b>")}</b> igualan puntos y los tres criterios (2ª, visitantes y empates). El desempate va a <b>sorteo de moneda</b>: lo decides tú, José, y de momento queda pendiente.</div>`;
-  }else{ coinEl.innerHTML=""; }
+  // sorteo de moneda
+  if(pendingGroups.length){
+    if(window.ROLE==="admin"){
+      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Sorteo de moneda pendiente</div>
+        Empate entre <b>${g.members.map(m=>m.usuario).join("</b>, <b>")}</b>, iguales en todo. Elige quién ganó la moneda:
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select class="coin-sel" data-key="${g.key}">${g.members.map(m=>`<option value="${m.usuario}">${m.usuario}</option>`).join("")}</select>
+          <button class="pub coin-save" data-key="${g.key}">Guardar ganador</button>
+        </div></div>`).join("");
+      coinEl.querySelectorAll(".coin-save").forEach(b=>b.addEventListener("click", ()=> saveCoin(b.dataset.key)));
+    } else {
+      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Empate a sorteo de moneda</div>
+        <b>${g.members.map(m=>m.usuario).join("</b> y <b>")}</b> igualan puntos y los tres criterios. El desempate lo decide José por sorteo de moneda; de momento queda pendiente.</div>`).join("");
+    }
+  } else {
+    const won=rows.filter(r=>r.note && r.note.indexOf("ganó la moneda")>=0).map(r=>r.usuario);
+    coinEl.innerHTML = won.length ? `<div class="coin-callout"><div class="ct">🪙 Sorteo resuelto</div>Ganó la moneda: <b>${won.join(", ")}</b>.</div>` : "";
+  }
 }
 
 function renderRealReveal(partidos, resultados, pronos){
@@ -1307,7 +1364,7 @@ async function checkAdmin(uid){
   let admin=false;
   try{ const s=await getDoc(doc(db,"participantes",uid)); admin = s.exists() && s.data().esAdmin===true; }catch(e){ admin=false; }
   const tab=document.getElementById("tab-admin");
-  if(admin){ window.ROLE="admin"; tab.style.display=""; buildAdmin(); }
+  if(admin){ window.ROLE="admin"; tab.style.display=""; buildAdmin(); if(currentUid) loadJornada(currentUid); }
   else {
     window.ROLE="part"; tab.style.display="none";
     const act=document.querySelector(".tab.active");
@@ -1391,6 +1448,7 @@ async function loadGeneral(){
     scored.forEach(s=>{ if(acc[s.usuario]) acc[s.usuario].puntos+=s.pts; });
     if(scored.length){
       scored.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+      applyCoin(scored, data.moneda);
       const w=scored[0].usuario;
       if(acc[w]) acc[w].copitas+=1;
     }
