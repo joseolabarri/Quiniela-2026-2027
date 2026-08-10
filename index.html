@@ -64,6 +64,21 @@
   #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:70;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;color:#fff;background:var(--ink);box-shadow:0 10px 30px -8px rgba(0,0,0,.4);opacity:0;transition:opacity .25s;pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
   #toast.ok{background:var(--green)}
   #toast.err{background:var(--red)}
+  .adm{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+  .adm h4{font-weight:800;font-size:15px;margin-bottom:12px}
+  .adm-legend{display:grid;grid-template-columns:26px 1fr 1fr 58px;gap:8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700;margin-bottom:6px;padding:0 2px}
+  .adm-fix{display:grid;grid-template-columns:26px 1fr 1fr 58px;gap:8px;align-items:center;margin-bottom:7px}
+  .adm-fix .n{font-weight:700;color:var(--ink-3);font-size:13px;text-align:center}
+  .adm input[type=text]{width:100%;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit}
+  .adm input[type=text]:focus,.adm input[type=datetime-local]:focus{outline:none;border-color:var(--red)}
+  .adm .seg2{display:flex;align-items:center;justify-content:center}
+  .adm .seg2 input{width:17px;height:17px;accent-color:var(--red)}
+  .adm .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .adm label.fl{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);font-weight:700;margin-bottom:5px}
+  .adm input[type=datetime-local]{width:100%;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-size:13.5px;font-family:inherit}
+  .adm .pub{margin-top:4px;padding:12px 26px;border-radius:9px;background:var(--red);color:#fff;font-weight:700;font-size:15px}
+  .adm .pub:hover{filter:brightness(1.05)}
+  .adm .hint{font-size:12.5px;color:var(--ink-2);margin-top:12px;line-height:1.5}
 
   .tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:55px;z-index:20;overflow-x:auto}
   .tab{padding:14px 16px;font-size:14.5px;color:var(--ink-2);border-bottom:2.5px solid transparent;white-space:nowrap;font-weight:600}
@@ -291,6 +306,7 @@
     <button class="tab" data-v="clasif" onclick="go('clasif')">Clasificación</button>
     <button class="tab" data-v="tablas" onclick="go('tablas')">Tablas</button>
     <button class="tab" data-v="instr" onclick="go('instr')">Instrucciones</button>
+    <button class="tab" id="tab-admin" data-v="admin" onclick="go('admin')" style="display:none;color:var(--red-deep)">Admin</button>
   </nav>
 
   <main>
@@ -353,6 +369,15 @@
           <div class="prize"><div class="k">Inscripción</div><div class="v">35€ <small>bizum a José</small></div></div>
         </div>
       </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="view" id="v-admin">
+      <div class="section-head">
+        <div><div class="eyebrow">Solo administrador</div><h2>Cargar jornada</h2></div>
+        <p>Rellena los partidos, la copita y la hora de cierre, y publica. Es lo que verá la familia.</p>
+      </div>
+      <div id="admin-body"></div>
     </section>
   </main>
 </div>
@@ -446,7 +471,8 @@ function renderCoupon(){
   const cop=ISCOPITA;
   let h=`<div class="coupon-head"><span class="ttl">Boleto · Jornada 5</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"1 local · X empate · 2 visitante"}</span></div>
     <div class="col-legend"><span>Nº</span><span>Partido</span><span class="opts"><span>1</span><span>X</span><span>2</span></span><span class="sth">${cop?"★":""}</span></div>`;
-  FIX.forEach((f,i)=>{const sel=myPred[i];
+  const FX=(window.FIXTURES&&window.FIXTURES.length)?window.FIXTURES:FIX;
+  FX.forEach((f,i)=>{const sel=myPred[i];
     h+=`<div class="match"><span class="no num">${i+1}</span>
       <span class="teams">${f[0]} <span style="color:var(--ink-3)">·</span> ${f[1]}${f[2]?'<span class="seg">2ª</span>':''}</span>
       <span class="opts">${["1","X","2"].map(o=>`<button class="opt ${sel===o?'sel':''}" onclick="pick(${i},'${o}')">${o}</button>`).join("")}</span>
@@ -466,8 +492,9 @@ function renderCopita(){const el=document.getElementById("copita-block");
     :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">La copita de esta jornada es <b>${window.COPITA||"—"}</b>. Rellena el Pleno al 15. Si lo clava, se salva de descansar.</span></div>`;
 }
 function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
+  const PL=window.PLENO||PLENO;
   el.innerHTML=`<div class="pleno"><div class="ph"><span class="t">Pleno al 15</span><span class="v">Resultado exacto · 4 puntos · partido fijado por Loterías</span></div>
-    <div class="pleno-row"><span class="tm home">${PLENO.home}</span><input class="roller num" type="text" value="1" maxlength="2"><span class="x">–</span><input class="roller num" type="text" value="1" maxlength="2"><span class="tm away">${PLENO.away}</span></div></div>`;
+    <div class="pleno-row"><span class="tm home">${PL.home}</span><input class="roller num" type="text" value="1" maxlength="2"><span class="x">–</span><input class="roller num" type="text" value="1" maxlength="2"><span class="tm away">${PL.away}</span></div></div>`;
 }
 
 /* -------- clasificación de la jornada con desempates -------- */
@@ -599,7 +626,7 @@ render();
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDeBiZJ4gHZF4sVRq00yPnSRAWMzS0P4As",
@@ -682,6 +709,10 @@ async function loadJornada(uid){
   const data=jSnap.data();
   cierreDate = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre ? new Date(data.cierre) : null);
   window.COPITA = data.copita || "—";
+  window.FIXTURES = Array.isArray(data.partidos) && data.partidos.length
+    ? data.partidos.map(p=>[p.local||"", p.visitante||"", p.seg?1:0])
+    : null;
+  window.PLENO = (data.pleno && data.pleno.local) ? {home:data.pleno.local, away:data.pleno.visitante} : null;
 
   try{
     const pSnap = await getDoc(doc(db,"jornadas",JID,"pronosticos",uid));
@@ -734,12 +765,105 @@ document.addEventListener("click", async (e)=>{
   }
 });
 
+// ---------- ADMINISTRADOR ----------
+const DEF_FIX = [
+  ["Real Madrid","Osasuna",0],["Barcelona","Getafe",0],["Atlético","Sevilla",0],
+  ["Athletic","Valencia",0],["Villarreal","Betis",0],["R. Sociedad","Girona",0],
+  ["Celta","Rayo",0],["Mallorca","Espanyol",0],
+  ["Racing","Almería",1],["Dépor","Granada",1],["Levante","Eibar",1],
+  ["Oviedo","Sporting",1],["Zaragoza","Mirandés",1],["Huesca","Cartagena",1]
+];
+const esc = s => (s||"").replace(/"/g,"&quot;");
+function toLocalInput(d){
+  if(!d) return "";
+  const p=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+}
+
+async function buildAdmin(){
+  const body=document.getElementById("admin-body");
+  let data={};
+  try{ const s=await getDoc(doc(db,"jornadas",JID)); if(s.exists()) data=s.data(); }catch(e){}
+  const fx = (Array.isArray(data.partidos)&&data.partidos.length)
+    ? data.partidos.map(p=>[p.local||"",p.visitante||"",p.seg?1:0]) : DEF_FIX;
+  const cierre = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre? new Date(data.cierre):null);
+  const pleno = data.pleno||{local:"",visitante:""};
+  const copita = data.copita||"";
+  const numero = data.numero||5;
+
+  let rows="";
+  for(let i=0;i<14;i++){
+    const f=fx[i]||["","",0];
+    rows+=`<div class="adm-fix">
+      <span class="n">${i+1}</span>
+      <input type="text" class="ax-local" value="${esc(f[0])}" placeholder="Local">
+      <input type="text" class="ax-visit" value="${esc(f[1])}" placeholder="Visitante">
+      <label class="seg2"><input type="checkbox" class="ax-seg" ${f[2]?"checked":""}></label>
+    </div>`;
+  }
+  body.innerHTML=`
+    <div class="adm"><h4>Los 14 partidos</h4>
+      <div class="adm-legend"><span></span><span>Local</span><span>Visitante</span><span>2ª</span></div>
+      ${rows}
+    </div>
+    <div class="adm"><h4>Pleno al 15 y copita</h4>
+      <div class="row2">
+        <div><label class="fl">Pleno · local</label><input type="text" id="ax-pl-local" value="${esc(pleno.local)}"></div>
+        <div><label class="fl">Pleno · visitante</label><input type="text" id="ax-pl-visit" value="${esc(pleno.visitante)}"></div>
+      </div>
+      <div class="row2">
+        <div><label class="fl">Copita (usuario)</label><input type="text" id="ax-copita" value="${esc(copita)}" placeholder="ej. prueba"></div>
+        <div><label class="fl">Nº de jornada</label><input type="text" id="ax-num" value="${numero}"></div>
+      </div>
+    </div>
+    <div class="adm"><h4>Hora de cierre</h4>
+      <input type="datetime-local" id="ax-cierre" value="${toLocalInput(cierre)}">
+      <div class="hint">Al publicar, la familia verá estos partidos y podrá meter sus pronósticos hasta esta hora. Puedes volver aquí y editarlos cuando quieras.</div>
+      <div style="margin-top:14px"><button class="pub" id="ax-publish">Publicar jornada</button></div>
+    </div>`;
+  document.getElementById("ax-publish").addEventListener("click", publishJornada);
+}
+
+async function publishJornada(){
+  const bp=document.getElementById("ax-publish");
+  const locals=[...document.querySelectorAll(".ax-local")].map(el=>el.value.trim());
+  const visits=[...document.querySelectorAll(".ax-visit")].map(el=>el.value.trim());
+  const segs=[...document.querySelectorAll(".ax-seg")].map(el=>el.checked);
+  const partidos=[];
+  for(let i=0;i<14;i++) partidos.push({local:locals[i]||"", visitante:visits[i]||"", seg:!!segs[i]});
+  const pleno={local:document.getElementById("ax-pl-local").value.trim(), visitante:document.getElementById("ax-pl-visit").value.trim()};
+  const copita=document.getElementById("ax-copita").value.trim().toLowerCase();
+  const numero=parseInt(document.getElementById("ax-num").value,10)||5;
+  const cierreVal=document.getElementById("ax-cierre").value;
+  if(!cierreVal){ toast("Pon una hora de cierre.", false); return; }
+  const cierreTs=Timestamp.fromDate(new Date(cierreVal));
+  const old=bp.textContent; bp.disabled=true; bp.textContent="Publicando…";
+  try{
+    await setDoc(doc(db,"jornadas",JID), { numero, partidos, pleno, copita, cierre: cierreTs }, { merge:true });
+    toast("Jornada publicada ✓", true);
+    if(currentUid) loadJornada(currentUid);
+  }catch(err){
+    const code=(err&&err.code)?err.code:"";
+    if(code.indexOf("permission-denied")>=0) toast("Solo el administrador puede publicar. Revisa tu ficha en 'participantes'.", false);
+    else toast("No se pudo publicar ("+(code||err.message)+").", false);
+  }finally{ bp.disabled=false; bp.textContent=old; }
+}
+
+async function checkAdmin(uid){
+  let admin=false;
+  try{ const s=await getDoc(doc(db,"participantes",uid)); admin = s.exists() && s.data().esAdmin===true; }catch(e){ admin=false; }
+  const tab=document.getElementById("tab-admin");
+  if(admin){ window.ROLE="admin"; tab.style.display=""; buildAdmin(); }
+  else { tab.style.display="none"; }
+}
+
 onAuthStateChanged(auth, (u)=>{
   btn.disabled=false; btn.textContent="Entrar";
   if(u){
     const name=(u.email||"").split("@")[0]||"usuario";
     window.showAppFor(name);
     loadJornada(u.uid);
+    checkAdmin(u.uid);
   }else{
     window.showLogin();
   }
