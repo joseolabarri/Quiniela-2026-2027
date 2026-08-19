@@ -1022,6 +1022,20 @@ async function showClosed(data){
     qs.forEach(d=>{ const x=d.data(); const u=x.usuario||d.id.slice(0,6); if(vivos.size && !vivos.has(u)) return; pronos.push({usuario:u, nombre:nombreDe[u]||u, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null, destacados:Array.isArray(x.destacados)?x.destacados:[]}); });
   }catch(e){ pronos=[]; }
 
+  // ── olvidos: quiniela por defecto (y 0–0 si era copita) ──
+  const olvidoSet = new Set(Array.isArray(data.olvidos)?data.olvidos:[]);
+  const OLV="1X21X21X21X21X".split("");
+  if(olvidoSet.size){
+    olvidoSet.forEach(u=>{
+      if(vivos.size && !vivos.has(u)) return;
+      let p=pronos.find(x=>x.usuario===u);
+      if(!p){ p={usuario:u, nombre:nombreDe[u]||u, signos:[], plenoPronostico:null, destacados:[]}; pronos.push(p); }
+      p.signos=OLV.slice();
+      p.plenoPronostico=(u===copita)?{local:0,visitante:0}:null;
+      p.olvido=true;
+    });
+  }
+
   const copPron = pronos.find(p=>p.usuario===copita);
   const destSet = new Set((copPron && copPron.destacados) || []);
   renderRealReveal(partidos, resultados, pronos, destSet);
@@ -1056,7 +1070,8 @@ async function showClosed(data){
       plenoHit = (Number(p.plenoPronostico.local)===Number(plenoReal.local) && Number(p.plenoPronostico.visitante)===Number(plenoReal.visitante));
       if(plenoHit) pts+=4;
     }
-    return {usuario:p.usuario,nombre:p.nombre,isCop,plenoHit,pts,seg2,away,draw};
+    if(p.olvido) pts=Math.floor(pts/2);
+    return {usuario:p.usuario,nombre:p.nombre,isCop,plenoHit,pts,seg2,away,draw,olvido:!!p.olvido};
   });
   rows.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
   const cg = applyCoin(rows, data.moneda);
@@ -1175,14 +1190,16 @@ function renderRealClasif(rows){
   let body="";
   rows.forEach((p,i)=>{
     let st,cls;
-    if(p.coin){ st="🪙 A sorteo"; cls="coin"; }
+    if(p.olvido){ st="Eliminado"; cls="desc"; }
+    else if(p.coin){ st="🪙 A sorteo"; cls="coin"; }
     else if(i===0){ st="🏆 Copita"; cls="cop"; }
     else if(showRotation && i>=n-4){ st="Eliminado"; cls="desc"; }
     else if(showRotation){ st="Clasificado"; cls="sigue"; }
     else { st=""; cls="sigue"; }
+    const nota = p.olvido ? 'Olvido · mitad de puntos' : (p.note||"");
     body+=`<tr class="r-${cls}">
       <td class="pos num">${i+1}º</td>
-      <td class="nm">${p.nombre||p.usuario}${p.isCop?' <span style="color:var(--red)">🏆</span>':''}${p.note?`<span class="note">${p.note}</span>`:''}</td>
+      <td class="nm">${p.nombre||p.usuario}${(p.isCop&&!p.olvido)?' <span style="color:var(--red)">🏆</span>':''}${nota?`<span class="note">${nota}</span>`:''}</td>
       <td class="pts num">${p.pts}</td>
       <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td></tr>`;
   });
@@ -1256,6 +1273,7 @@ async function buildAdmin(){
   try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,dinero:x.dinero||0});}); }catch(e){}
   parts.sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const juegan = Array.isArray(data.juegan)?data.juegan:[];
+  const olvidos = Array.isArray(data.olvidos)?data.olvidos:[];
   const fx = (Array.isArray(data.partidos)&&data.partidos.length)
     ? data.partidos.map(p=>[p.local||"",p.visitante||"",p.seg?1:0]) : DEF_FIX;
   const cierre = data.cierre && data.cierre.toDate ? data.cierre.toDate() : (data.cierre? new Date(data.cierre):null);
@@ -1321,6 +1339,9 @@ async function buildAdmin(){
         <div><label class="fl">Pleno real · local</label><input type="text" id="ax-plr-local" value="${esc(plenoR.local)}"></div>
         <div><label class="fl">Pleno real · visitante</label><input type="text" id="ax-plr-visit" value="${esc(plenoR.visitante)}"></div>
       </div>
+      <div style="margin:16px 0 8px;font-weight:700;font-size:13.5px">Olvidos de esta jornada</div>
+      <div class="hint" style="margin:0 0 10px">Marca a quien <b>se le olvidó</b> jugar. Al guardar, se le pone la quiniela por defecto (1·X·2… y 0–0 si era copita), se le cuenta <b>la mitad</b> de los puntos (redondeando hacia abajo) y queda <b>eliminado</b>. Márcalo cuando ya tengas los 14 resultados puestos.</div>
+      <div class="juega-grid">${parts.map(p=>`<label class="juega-item"><input type="checkbox" class="olv" data-user="${p.usuario}" ${olvidos.includes(p.usuario)?"checked":""}> ${p.nombre}</label>`).join("") || '<span class="hint" style="margin:0">Aún no hay participantes.</span>'}</div>
       <div style="margin-top:14px"><button class="pub" id="ax-save-res">Guardar resultados</button></div>
     </div>
     <div class="adm"><h4>Cierre de las Tablas</h4>
@@ -1550,9 +1571,10 @@ async function saveResultados(){
   const sels=[...document.querySelectorAll(".ax-res")].map(s=>s.value);
   const resultados=sels.map(v=> (v==="1"||v==="X"||v==="2")?v:null);
   const plenoResultado={ local:document.getElementById("ax-plr-local").value.trim(), visitante:document.getElementById("ax-plr-visit").value.trim() };
+  const olvidos=[...document.querySelectorAll(".olv:checked")].map(el=>el.dataset.user);
   const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
   try{
-    await setDoc(doc(db,"jornadas",ADMIN_JID), { resultados, plenoResultado }, { merge:true });
+    await setDoc(doc(db,"jornadas",ADMIN_JID), { resultados, plenoResultado, olvidos }, { merge:true });
     toast("Resultados guardados ✓", true);
     if(currentUid) loadJornada(currentUid);
     loadGeneral();
@@ -1716,22 +1738,34 @@ async function loadGeneral(){
     const resultados=(Array.isArray(data.resultados)&&data.resultados.length===14)?data.resultados:null;
     if(!resultados) continue;
     const partidos=Array.isArray(data.partidos)?data.partidos:[];
+    const olvidoSet=new Set(Array.isArray(data.olvidos)?data.olvidos:[]);
+    const OLV="1X21X21X21X21X".split("");
     let pron=[];
     try{ const qs=await getDocs(collection(db,"jornadas",j.id,"pronosticos")); qs.forEach(d=>{const x=d.data(); pron.push({usuario:x.usuario||d.id, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null});}); }
     catch(e){ continue; }
+    // olvidos: quiniela por defecto (0–0 si copita)
+    olvidoSet.forEach(u=>{
+      let p=pron.find(x=>x.usuario===u);
+      if(!p){ p={usuario:u, signos:[], plenoPronostico:null}; pron.push(p); }
+      p.signos=OLV.slice();
+      p.plenoPronostico=(u===data.copita)?{local:0,visitante:0}:null;
+      p.olvido=true;
+    });
     const scored=pron.map(p=>{
       const sc=scoreSignos(p.signos,resultados,partidos);
       let pts=sc.pts;
       if(p.usuario===data.copita && data.plenoResultado && p.plenoPronostico
          && Number(p.plenoPronostico.local)===Number(data.plenoResultado.local)
          && Number(p.plenoPronostico.visitante)===Number(data.plenoResultado.visitante)) pts+=4;
-      return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw};
+      if(p.olvido) pts=Math.floor(pts/2);
+      return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw, olvido:!!p.olvido};
     });
     scored.forEach(s=>{ if(acc[s.usuario]) acc[s.usuario].puntos+=s.pts; });
-    if(scored.length){
-      scored.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
-      applyCoin(scored, data.moneda);
-      const w=scored[0].usuario;
+    const elegibles=scored.filter(s=>!s.olvido);
+    if(elegibles.length){
+      elegibles.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+      applyCoin(elegibles, data.moneda);
+      const w=elegibles[0].usuario;
       if(acc[w]) acc[w].copitas+=1;
     }
   }
