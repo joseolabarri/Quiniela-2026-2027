@@ -257,6 +257,10 @@
   .mv-chip.hit{background:var(--green-soft)}
   .mv-chip.hit,.mv-chip.hit b{color:var(--green)}
   .dest-star{color:#E6A700;margin-left:6px;font-size:12px}
+  .played-info{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--bg-soft2);padding:3px 10px;border-radius:99px;text-transform:none;letter-spacing:0}
+  .played-info b{color:var(--ink)}
+  .pi-dot{width:7px;height:7px;border-radius:99px;background:var(--amber-ink);box-shadow:0 0 0 3px var(--amber-bg)}
+  .pi-dot.done{background:var(--green)}
   table.reveal tr.destrow td.match{box-shadow:inset 3px 0 0 #E6A700}
   .mv-card.dest{border-color:#F2D98A;box-shadow:0 10px 24px -16px rgba(230,167,0,.5)}
 
@@ -264,14 +268,15 @@
   .plr{display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:var(--radius);background:linear-gradient(160deg,#1B1D24,#25202A);border:1px solid #33353D;box-shadow:0 16px 36px -20px rgba(0,0,0,.5)}
   .plr-badge{width:44px;height:44px;border-radius:12px;background:var(--grad);display:grid;place-items:center;font-size:22px;flex-shrink:0;box-shadow:0 8px 18px -8px rgba(224,30,55,.8)}
   .plr-main{flex:1;min-width:0}
-  .plr-h{font-size:12px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:5px}
-  .plr-sc{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .plr-guess,.plr-real{font-family:var(--display);font-weight:700;font-size:20px;color:#fff}
-  .plr-vs{font-size:11px;color:#7a7f89;text-transform:uppercase;letter-spacing:.08em}
-  .plr-real{color:var(--red-2)}
-  .plr-out{font-weight:800;font-size:13px;padding:7px 13px;border-radius:99px;white-space:nowrap;flex-shrink:0}
+  .plr-h{font-size:12px;color:#9aa0ab;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:7px}
+  .plr-match{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+  .plr-match .tm{color:#EAEBEE;font-size:14px;font-weight:600}
+  .plr-real{font-family:var(--display);font-weight:700;font-size:22px;color:#fff;background:rgba(255,255,255,.09);padding:2px 12px;border-radius:9px}
+  .plr-guess-line{font-size:12.5px;color:#9aa0ab;text-align:center}.plr-guess-line b{color:#EAEBEE}
+  .plr-out{font-weight:800;font-size:14px;padding:10px 15px;border-radius:12px;white-space:nowrap;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+  .plr-out .p4{font-size:11px;font-weight:600;opacity:.95}
   .plr.ok .plr-out{background:var(--green);color:#fff}
-  .plr.no .plr-out{background:#3A3C45;color:#c3c7ce}
+  .plr.no .plr-out{background:var(--red);color:#fff}
 
   /* CLASIFICACIÓN */
   .seg-toggle{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:3px}
@@ -299,6 +304,7 @@
   table.std .money{color:var(--green);font-weight:700}
   table.std .cops{font-weight:700}
   table.std .tbp{color:var(--blue);font-weight:700}
+  .std-ic{display:none}
   table.std .cup{color:var(--red)}
   .avem{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:8px;background:var(--bg-soft2);font-size:15px;margin-right:9px;line-height:1;flex-shrink:0}
   .avem.sm{width:23px;height:23px;font-size:13px;margin-right:8px}
@@ -393,6 +399,13 @@
     .topbar{flex-wrap:wrap;gap:10px;padding:11px 14px}.jornada-pill{order:3}
     main{padding:20px 14px 96px}.section-head h2{font-size:24px}
     .col-legend,.match{grid-template-columns:24px 1fr 104px 34px}
+    table.std th,table.std td{padding:12px 6px;font-size:13px}
+    table.std th:first-child,table.std td:first-child{padding-left:12px}
+    table.std th:last-child,table.std td:last-child{padding-right:12px}
+    table.std .avem{width:24px;height:24px;font-size:13px;margin-right:7px}
+    table.std .total{font-size:18px;color:var(--red)}
+    table.std .who .who-nm{font-size:13.5px}
+    .std-ic{display:inline-flex!important}.std-lb{display:none}
     #demobar{flex-wrap:wrap;justify-content:center;border-radius:20px}.countdown .lbl{display:none}
     .reveal-desktop{display:none}.reveal-mobile{display:block}
     .tabs{position:fixed;bottom:0;left:0;right:0;top:auto;border-top:1px solid var(--line);border-bottom:none;padding:7px 4px calc(7px + env(safe-area-inset-bottom));gap:2px;justify-content:space-around;box-shadow:0 -10px 30px -18px rgba(0,0,0,.22);z-index:40;overflow:visible}
@@ -455,7 +468,7 @@
         <div class="notice lock"><span class="ic">✓</span><span>La jornada ha cerrado y se han <b>destapado los pronósticos</b>. Esta jornada la jugaron 8; los otros 4 descansaban. Abajo, quién se clasifica aplicando los criterios de desempate.</span></div>
         <div id="jorClasif"></div>
         <div id="coinCallout"></div>
-        <div class="detail-h">El detalle, partido a partido &nbsp;·&nbsp; <span style="color:#E6A700">★</span> destacado de la copita</div>
+        <div class="detail-h">El detalle, partido a partido &nbsp;·&nbsp; <span style="color:#E6A700">★</span> destacado de la copita <span id="playedInfo" class="played-info"></span></div>
         <div class="reveal-wrap reveal-desktop"><table class="reveal" id="revealtbl"></table></div>
         <div class="reveal-mobile" id="revealmob"></div>
         <div class="pleno-reveal" id="plenoReveal"></div>
@@ -469,7 +482,7 @@
       </div>
       <div id="clasif-ind">
         <div class="standings"><table class="std">
-          <thead><tr><th class="pos">#</th><th>Participante</th><th class="r">€</th><th class="c">Copitas</th><th class="c">Tablas</th><th class="r">Puntos</th></tr></thead>
+          <thead><tr><th class="pos">#</th><th>Participante</th><th class="r">€</th><th class="c"><span class="std-ic">🏆</span><span class="std-lb">Copitas</span></th><th class="c"><span class="std-ic">📋</span><span class="std-lb">Tablas</span></th><th class="r"><span class="std-ic">Pts</span><span class="std-lb">Puntos</span></th></tr></thead>
           <tbody id="std-body"></tbody>
         </table></div>
       </div>
@@ -1057,15 +1070,21 @@ async function showClosed(data){
     }
   });
   const pendingGroups=[];
+  const showRot = rows.length>=8;
+  const cutoff = showRot ? rows.length-4 : -1; // primer índice eliminado
   cg.groups.forEach(([a,b])=>{
+    const isCopita = (a===0);
+    const straddleCut = (cutoff>=0 && a < cutoff && b >= cutoff);
+    if(!isCopita && !straddleCut) return; // este empate no necesita moneda
     const members=rows.slice(a,b+1);
     const key=members.map(m=>m.usuario).sort().join("|");
     const winner=(data.moneda||{})[key];
+    const motivo = isCopita ? "copita" : "quién se elimina";
     members.forEach(m=>{
       m.coin=!winner;
-      m.note = winner ? (m.usuario===winner?"🪙 ganó la moneda":"🪙 perdió la moneda") : `Empate a ${m.pts} · a sorteo`;
+      m.note = winner ? (m.usuario===winner?"🪙 ganó la moneda":"🪙 perdió la moneda") : `Empate · a sorteo (${motivo})`;
     });
-    if(!winner) pendingGroups.push({key, members});
+    if(!winner) pendingGroups.push({key, members, motivo});
   });
   renderRealClasif(rows);
 
@@ -1073,25 +1092,28 @@ async function showClosed(data){
   const cop=pronos.find(p=>p.usuario===copita);
   if(cop && cop.plenoPronostico && plenoReal){
     const ok=Number(cop.plenoPronostico.local)===Number(plenoReal.local)&&Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
+    const pl = data.pleno || {};
+    const home = pl.local || "Local", away = pl.visitante || "Visitante";
     plEl.innerHTML=`<div class="plr ${ok?'ok':'no'}"><div class="plr-badge">🏆</div>
       <div class="plr-main"><div class="plr-h">Pleno al 15 · copita ${cop.nombre||copita}</div>
-      <div class="plr-sc"><span class="plr-guess">${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</span><span class="plr-vs">real</span><span class="plr-real">${plenoReal.local}–${plenoReal.visitante}</span></div></div>
-      <div class="plr-out">${ok?'+4 · se salva 🛟':'fallado'}</div></div>`;
+      <div class="plr-match"><span class="tm">${home}</span><span class="plr-real">${plenoReal.local}–${plenoReal.visitante}</span><span class="tm">${away}</span></div>
+      <div class="plr-guess-line">La copita puso <b>${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</b></div></div>
+      <div class="plr-out">${ok?'Acertado<span class="p4">+4 · se salva 🛟</span>':'Fallado'}</div></div>`;
   }else{ plEl.innerHTML=""; }
 
   // sorteo de moneda
   if(pendingGroups.length){
     if(window.ROLE==="admin"){
-      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Sorteo de moneda pendiente</div>
-        Empate entre <b>${g.members.map(m=>m.nombre).join("</b>, <b>")}</b>, iguales en todo. Elige quién ganó la moneda:
+      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Sorteo de moneda · ${g.motivo}</div>
+        Empate entre <b>${g.members.map(m=>m.nombre).join("</b>, <b>")}</b>, iguales en todo. ${g.motivo==="copita"?"Elige quién es la copita":"Elige quién se salva (el otro se elimina)"}:
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select class="coin-sel" data-key="${g.key}">${g.members.map(m=>`<option value="${m.usuario}">${m.nombre}</option>`).join("")}</select>
-          <button class="pub coin-save" data-key="${g.key}">Guardar ganador</button>
+          <button class="pub coin-save" data-key="${g.key}">Guardar</button>
         </div></div>`).join("");
       coinEl.querySelectorAll(".coin-save").forEach(b=>b.addEventListener("click", ()=> saveCoin(b.dataset.key)));
     } else {
-      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Empate a sorteo de moneda</div>
-        <b>${g.members.map(m=>m.nombre).join("</b> y <b>")}</b> igualan puntos y los tres criterios. El desempate lo decide José por sorteo de moneda; de momento queda pendiente.</div>`).join("");
+      coinEl.innerHTML = pendingGroups.map(g=>`<div class="coin-callout"><div class="ct">🪙 Sorteo de moneda pendiente</div>
+        <b>${g.members.map(m=>m.nombre).join("</b> y <b>")}</b> empatan en todo; se decide por <b>${g.motivo}</b> a sorteo de moneda. Lo resuelve José.</div>`).join("");
     }
   } else {
     const won=rows.filter(r=>r.note && r.note.indexOf("ganó la moneda")>=0).map(r=>r.nombre);
@@ -1105,6 +1127,10 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
   const mob=document.getElementById("revealmob");
   if(!pronos.length){ tbl.innerHTML='<tbody><tr><td style="padding:14px">Sin pronósticos.</td></tr></tbody>'; if(mob) mob.innerHTML='<div class="mv-card">Sin pronósticos.</div>'; return; }
   const totals=pronos.map(()=>0);
+  const played = resultados ? resultados.filter(r=>r==="1"||r==="X"||r==="2").length : 0;
+  const rem = 14 - played;
+  const pe=document.getElementById("playedInfo");
+  if(pe) pe.innerHTML = rem>0 ? `<span class="pi-dot"></span>Faltan <b>${rem}</b> por jugarse` : `<span class="pi-dot done"></span>Jornada completa`;
   const star = i => destSet.has(i) ? '<span class="dest-star" title="Destacado de la copita">★</span>' : '';
   // ── versión escritorio: tabla partidos × personas ──
   let h=`<thead><tr><th class="match">Partido</th>`;
@@ -1151,8 +1177,8 @@ function renderRealClasif(rows){
     let st,cls;
     if(p.coin){ st="🪙 A sorteo"; cls="coin"; }
     else if(i===0){ st="🏆 Copita"; cls="cop"; }
-    else if(showRotation && i>=n-4){ st="Descansa"; cls="desc"; }
-    else if(showRotation){ st="Sigue"; cls="sigue"; }
+    else if(showRotation && i>=n-4){ st="Eliminado"; cls="desc"; }
+    else if(showRotation){ st="Clasificado"; cls="sigue"; }
     else { st=""; cls="sigue"; }
     body+=`<tr class="r-${cls}">
       <td class="pos num">${i+1}º</td>
@@ -1162,7 +1188,7 @@ function renderRealClasif(rows){
   });
   document.getElementById("jorClasif").innerHTML=
     `<div class="jcl"><div class="jh"><span class="t">Clasificación de la jornada</span>
-      <span class="sub">${n} jugaron${showRotation?' · siguen 4 · descansan 4':''}</span></div>
+      <span class="sub">${n} jugaron${showRotation?' · 4 se clasifican · 4 se eliminan':''}</span></div>
       <table><tbody>${body}</tbody></table></div>`;
 }
 
