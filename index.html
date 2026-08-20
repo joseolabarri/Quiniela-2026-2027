@@ -374,12 +374,13 @@
   .i-hero p{color:var(--ink-2);font-size:14px;line-height:1.55}
   .instr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:14px}
   .icard{background:#fff;border:1px solid var(--line);border-top:3px solid var(--red);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
-  .icard.c-green{border-top-color:var(--green)}.icard.c-blue{border-top-color:var(--blue)}.icard.c-amber{border-top-color:#E6A700}
+  .icard.c-green{border-top-color:var(--green)}.icard.c-blue{border-top-color:var(--blue)}.icard.c-amber{border-top-color:#E6A700}.icard.c-red{border-top-color:var(--red)}
   .icard .h{font-family:var(--display);font-weight:700;font-size:15.5px;margin-bottom:8px;display:flex;align-items:center;gap:9px}
   .icard .h .n{width:26px;height:26px;border-radius:8px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;flex-shrink:0}
   .icard.c-green .h .n{background:var(--green)}.icard.c-blue .h .n{background:var(--blue)}.icard.c-amber .h .n{background:#E6A700}
   .icard p{font-size:13.5px;color:var(--ink-2);line-height:1.55}.icard p b{color:var(--ink)}
   .i-rules{display:grid;gap:10px;margin:4px 0 22px}
+  .i-subsec{font-family:var(--display);font-weight:700;font-size:14px;color:var(--ink-2);margin:2px 0 9px}
   .i-rule{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-left:3px solid var(--ink-3);border-radius:var(--radius-sm);padding:13px 15px}
   .i-rule .ic{font-size:18px;flex-shrink:0;line-height:1.3}
   .i-rule .tx{font-size:13.5px;color:var(--ink-2);line-height:1.55}.i-rule .tx b{color:var(--ink)}
@@ -391,9 +392,17 @@
   .i-score .row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2)}
   .i-score .row:last-child{border-bottom:none}
   .i-score .row .k b{color:var(--ink)}
+  .i-lead{color:var(--ink-2);font-size:13.5px;margin:-2px 0 12px;line-height:1.55;max-width:640px}
+  .ih-sub{font-weight:500;font-size:12px;color:var(--ink-3);text-transform:none;letter-spacing:0}
   .i-pts{display:inline-block;min-width:30px;text-align:center;font-family:var(--display);font-weight:700;color:#fff;background:var(--grad);border-radius:7px;padding:3px 9px;font-size:12.5px;white-space:nowrap}
   .i-pts.green{background:var(--green)}.i-pts.blue{background:var(--blue)}.i-pts.ink{background:var(--ink-3)}
   .doc h3.sec{font-family:var(--display);font-weight:700;font-size:18px;margin:6px 0 12px}
+  .crit-lbl{font-weight:700;font-size:13px;color:var(--ink-2);margin:2px 0 9px}
+  .crit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .crit{background:#fff;border:1px solid var(--line);border-left:3px solid var(--red);border-radius:var(--radius-sm);padding:11px 13px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
+  .crit .cn{width:22px;height:22px;border-radius:99px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .crit .ct{font-size:12.5px;color:var(--ink);line-height:1.35}.crit .ct b{font-weight:700}
+  .crit.g{border-left-color:var(--green)}.crit.g .cn{background:var(--green)}
   .prize-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:2px}
   .prize{padding:18px;border-radius:var(--radius);background:var(--grad);color:#fff;box-shadow:var(--shadow-lg)}
   .prize.alt{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
@@ -514,33 +523,41 @@
       <div class="section-head"><div><div class="eyebrow">El juego</div><h2>Cómo funciona</h2></div></div>
       <div class="doc">
         <div class="i-hero">
-          <h3>La porra de la familia, jornada a jornada</h3>
-          <p>Somos <b>12</b>, repartidos en <b>4 equipos</b>, y jugamos las <b>38 jornadas</b> de liga. Cada semana pronosticas 14 partidos, se cierra a una hora, y al cerrar se ve lo de todos. Aquí tienes las reglas.</p>
+          <h3>La Quiniela 2026/2027</h3>
+          <p>12 jugadores, 4 equipos, 38 jornadas de liga.</p>
         </div>
 
         <div class="instr-grid">
-          <div class="icard"><div class="h"><span class="n">1</span>Quién juega</div><p>Cada jornada <b>juegan 8 y descansan 4</b>. A la siguiente entran los 4 que descansaron y descansan <b>los 4 peores</b> de los que jugaron.</p></div>
-          <div class="icard c-blue"><div class="h"><span class="n">2</span>El boleto</div><p>14 partidos a <b>1·X·2</b>. Cada acierto es <b>1 punto</b>. Los partidos de <b>2ª división van en azul</b>.</p></div>
-          <div class="icard c-amber"><div class="h"><span class="n">3</span>La copita</div><p>El mejor de la jornada es la <b>copita</b>: rellena el <b>Pleno al 15</b> (resultado exacto, 4 pts). Si lo clava, <b>se salva</b> de descansar.</p></div>
-          <div class="icard c-green"><div class="h"><span class="n">4</span>Las tablas</div><p>Antes de empezar la temporada, cada uno hace sus <b>pronósticos de pretemporada</b>. Puntúan al final y <b>deciden empates</b>.</p></div>
+          <div class="icard"><div class="h"><span class="n">1</span>Quién juega</div><p>La primera jornada jugamos los 12. Se eliminarán los cuatro peores. A partir de la segunda jornada, los cuatro mejores se clasificarán y los cuatro peores se eliminarán.</p></div>
+          <div class="icard c-amber"><div class="h"><span class="n">2</span>La copita</div><p>El mejor de cada jornada es la copita. Ese participante hace el Pleno al 15, que si lo acierta vale cuatro puntos y le salva de la eliminación, y el Elige al 8. En el caso de que la copita empate con otra persona por la copita de esa jornada, perderá automáticamente dicho desempate.</p></div>
+          <div class="icard c-red"><div class="h"><span class="n">3</span>Los olvidados</div><p>Al participante que se le olvide hacer una jornada, se le hará una quiniela por defecto, se le sumará la mitad de la puntuación que haga y quedará eliminado automáticamente.</p></div>
         </div>
 
         <h3 class="sec">Reglas que conviene tener claras</h3>
+        <h4 class="i-subsec">Desempates de la jornada</h4>
         <div class="i-rules">
-          <div class="i-rule r-blue"><span class="ic">⚖️</span><span class="tx"><b>Desempate de la jornada:</b> si dos empatan a puntos, gana quien tenga más aciertos de <b>2ª</b>; si siguen igual, más aciertos de <b>visitante (2)</b>; luego más <b>empates (X)</b>; y si aún hay empate, <b>sorteo de moneda</b>.</span></div>
-          <div class="i-rule"><span class="ic">⭐</span><span class="tx"><b>Destacados:</b> la copita marca 8 partidos como destacados. <b>No cuentan para la porra</b>, pero se señalan con una estrella en el destape.</span></div>
-          <div class="i-rule r-red"><span class="ic">⏰</span><span class="tx"><b>Si te olvidas de una jornada:</b> se te pone una quiniela <b>al azar</b>, esa jornada vale <b>la mitad</b> de puntos y quedas <b>eliminado</b> de la rotación.</span></div>
-          <div class="i-rule r-amber"><span class="ic">🏆</span><span class="tx"><b>Clasificación general:</b> manda el <b>total de puntos</b>. Si hay empate, desempata: más <b>dinero</b> ganado → más <b>copitas</b> → más <b>puntos de tablas</b>.</span></div>
+          <div class="i-rule r-blue"><span class="ic">1️⃣</span><span class="tx">Si dos empatan a puntos, gana quien tenga más aciertos de <b>Segunda</b>.</span></div>
+          <div class="i-rule r-blue"><span class="ic">2️⃣</span><span class="tx">Si siguen igualados, gana quien tenga más aciertos de <b>visitante (2)</b>.</span></div>
+          <div class="i-rule r-blue"><span class="ic">3️⃣</span><span class="tx">Si aún empatan, gana quien tenga más <b>empates (X)</b> acertados.</span></div>
+          <div class="i-rule r-blue"><span class="ic">🪙</span><span class="tx">Solo para decidir la <b>copita</b> o quién se <b>elimina</b>, si siguen empatados a todo, se resuelve a <b>sorteo de moneda</b>.</span></div>
+        </div>
+        <h4 class="i-subsec">Desempates de la clasificación general</h4>
+        <div class="i-rules">
+          <div class="i-rule r-amber"><span class="ic">1️⃣</span><span class="tx">A igualdad de puntos totales, va por delante quien más <b>dinero</b> lleve ganado.</span></div>
+          <div class="i-rule r-amber"><span class="ic">2️⃣</span><span class="tx">Si siguen igual, quien tenga más <b>copitas</b>.</span></div>
+          <div class="i-rule r-amber"><span class="ic">3️⃣</span><span class="tx">Y por último, quien tenga más <b>puntos de tablas</b>.</span></div>
         </div>
 
         <h3 class="sec">Cómo puntúan las tablas</h3>
         <div class="i-score">
-          <div class="ih">Apartados sueltos</div>
-          <div class="row"><span class="k">Campeón, pichichi, Zarra, menos/más goleado, 1º destituido</span><span class="i-pts">5 pts</span></div>
+          <div class="ih">Apartados sueltos <span class="ih-sub">(campeón, pichichi, Zarra, menos y más goleado, 1º destituido)</span></div>
+          <div class="row"><span class="k">Aciertas el apartado</span><span class="i-pts green">5 pts</span></div>
           <div class="row"><span class="k">El que marques con <b>×2</b>, si lo aciertas</span><span class="i-pts">10 pts</span></div>
-          <div class="ih" style="border-top:1px solid var(--line)">Bloques ordenados (Champions, 5º-6º, ascensos, descensos…)</div>
-          <div class="row"><span class="k">Aciertas el equipo <b>en su puesto exacto</b></span><span class="i-pts green">5 pts</span></div>
+          <div class="row"><span class="k">Eres el <b>único</b> que lo acierta</span><span class="i-pts">+5 pts</span></div>
+          <div class="ih" style="border-top:1px solid var(--line)">Bloques ordenados <span class="ih-sub">(Champions, 5º-6º, ascensos, descensos…)</span></div>
           <div class="row"><span class="k">Aciertas el equipo pero <b>no el puesto</b></span><span class="i-pts blue">3 pts</span></div>
+          <div class="row"><span class="k">Aciertas el equipo <b>en su puesto exacto</b></span><span class="i-pts green">5 pts</span></div>
+          <div class="row"><span class="k">Eres el <b>único</b> que acierta ese puesto exacto</span><span class="i-pts">+5 pts</span></div>
           <div class="row"><span class="k"><b>Bloque entero</b> exacto (Champions, ascensos, descensos)</span><span class="i-pts">+15 pts</span></div>
           <div class="row"><span class="k">Fallas el equipo</span><span class="i-pts ink">0 pts</span></div>
         </div>
@@ -549,7 +566,6 @@
         <div class="prize-strip">
           <div class="prize"><div class="k">Campeón</div><div class="v">110€</div></div>
           <div class="prize alt"><div class="k">Equipo campeón</div><div class="v">20€ <small>/ persona</small></div></div>
-          <div class="prize alt"><div class="k">Inscripción</div><div class="v">35€ <small>bizum a José</small></div></div>
         </div>
       </div>
     </section>
@@ -1652,9 +1668,12 @@ async function loadTablas(uid){
   window.TB_LOCKED = cierre ? (new Date()>=cierre) : false;
   const tn=document.getElementById("tbNotice");
   if(tn){
-    if(window.TB_LOCKED) tn.innerHTML='';
-    else if(cierre) tn.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+cierre.toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+'</b>) <b>solo ves las tuyas</b>. Puedes editarlas hasta entonces.</span>';
-    else tn.innerHTML='<span class="ic">🔒</span><span>Rellena tus tablas y guárdalas. <b>Solo ves las tuyas</b> hasta que se fije y pase la fecha de cierre.</span>';
+    if(window.TB_LOCKED){ tn.style.display="none"; tn.innerHTML=''; }
+    else{
+      tn.style.display="";
+      if(cierre) tn.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+cierre.toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+'</b>) <b>solo ves las tuyas</b>. Puedes editarlas hasta entonces.</span>';
+      else tn.innerHTML='<span class="ic">🔒</span><span>Rellena tus tablas y guárdalas. <b>Solo ves las tuyas</b> hasta que se fije y pase la fecha de cierre.</span>';
+    }
   }
   if(window.TB_LOCKED){ await renderTablasReveal(); } else { renderTablas(); }
 }
@@ -1676,20 +1695,18 @@ async function renderTablasReveal(){
   people.sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const N=tbNorm;
   let html="";
-  // ── apartados sueltos: un toggle con los 6 ──
+  // ── cada apartado suelto, su propio toggle ──
   const sueltos=[["campeon","Campeón de liga"],["pichichi","Pichichi"],["zarra","Trofeo Zarra"],["menosGoleado","Equipo menos goleado"],["maxGoleador","Equipo máximo goleador"],["primerDestituido","1º entrenador destituido"]];
-  let sInner="";
   sueltos.forEach(([k,label])=>{
     const rv = real && real.sueltos ? real.sueltos[k] : null;
-    sInner+=`<div class="tbd-sub">${label}${rv?` · <span class="tbd-real">real: ${rv}</span>`:''}</div>`;
-    sInner+= people.map(p=>{
+    const inner = (rv?`<div class="tbd-sub"><span class="tbd-real">Real: ${rv}</span></div>`:'') + people.map(p=>{
       const pick=p.sueltos[k]||"—";
       const cls = (real&&rv) ? (N(pick)===N(rv)?"tb-hit":"tb-miss") : "";
       const dbl = p.doble===k?'<span class="x2mini">×2</span>':'';
       return `<div class="tb-reveal-row"><span class="tb-user">${p.nombre}</span><span class="tb-pick ${cls}">${pick}${dbl}</span></div>`;
     }).join("");
+    html+=detailsTbd(label,"5 pts · el ×2 vale 10",inner);
   });
-  html+=detailsTbd("Apartados sueltos","5 pts cada uno · el ×2 vale 10",sInner);
   // ── bloques ordenados: un toggle cada uno ──
   const blocks=[
     ["champions","Champions League (1º–4º)",4,"5 puesto exacto · 3 equipo · +15 los 4"],
@@ -1801,10 +1818,29 @@ async function loadGeneral(){
   let realTb=null;
   try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) realTb=rt.data(); }catch(e){}
   if(realTb){
+    // 1) cargar las tablas de todos
+    const tbOf={};
     for(const k in acc){
       const e=acc[k];
-      try{ const t=await getDoc(doc(db,"tablas",e.uid)); if(t.exists()) e.tablas = tablasPuntos(t.data(), realTb); }catch(_){}
+      try{ const t=await getDoc(doc(db,"tablas",e.uid)); if(t.exists()) tbOf[k]=t.data(); }catch(_){}
     }
+    // 2) puntos base
+    for(const k in acc){ acc[k].tablas = tbOf[k] ? tablasPuntos(tbOf[k], realTb) : 0; }
+    // 3) exclusividad: +5 al único que acierta
+    const rs=realTb.sueltos||{};
+    ["campeon","pichichi","zarra","menosGoleado","maxGoleador","primerDestituido"].forEach(kk=>{
+      if(!rs[kk]) return;
+      const aciertan=Object.keys(tbOf).filter(k=> tbNorm((tbOf[k].sueltos||{})[kk])===tbNorm(rs[kk]));
+      if(aciertan.length===1 && acc[aciertan[0]]) acc[aciertan[0]].tablas += 5;
+    });
+    ["champions","p56","desc2","asc","rfef"].forEach(bk=>{
+      const rarr=Array.isArray(realTb[bk])?realTb[bk]:[];
+      for(let i=0;i<rarr.length;i++){
+        const rt=tbNorm(rarr[i]); if(!rt) continue;
+        const aciertan=Object.keys(tbOf).filter(k=>{ const arr=Array.isArray(tbOf[k][bk])?tbOf[k][bk]:[]; return tbNorm(arr[i])===rt; });
+        if(aciertan.length===1 && acc[aciertan[0]]) acc[aciertan[0]].tablas += 5;
+      }
+    });
   }
   const rows=Object.values(acc).sort((a,b)=> b.puntos-a.puntos || b.dinero-a.dinero || b.copitas-a.copitas || b.tablas-a.tablas || a.nombre.localeCompare(b.nombre));
   const tm={};
