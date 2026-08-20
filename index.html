@@ -114,6 +114,19 @@
   .tb-reveal-tbl td.tb-part{background:#E6F1FB;color:#185FA5;font-weight:600}
   .tb-reveal-tbl td.tb-miss{color:#A32D2D}
   .tb-reveal-tbl tr.tb-real td{background:var(--bg-soft2);font-weight:700;color:var(--red)}
+  .tbd{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+  .tbd>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px}
+  .tbd>summary::-webkit-details-marker{display:none}
+  .tbd-head{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .tbd-t{font-family:var(--display);font-weight:700;font-size:16px}
+  .tbd-t::before{content:"";display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--grad);margin-right:9px;vertical-align:2px}
+  .tbd-pts{font-size:11.5px;color:var(--ink-2);padding-left:18px}
+  .tbd-chev{font-size:20px;color:var(--ink-3);transition:transform .2s;flex-shrink:0}
+  .tbd[open] .tbd-chev{transform:rotate(180deg)}
+  .tbd-body{padding:4px 18px 16px}
+  .tbd-sub{font-weight:700;font-size:12.5px;color:var(--red);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+  .tbd-sub:first-child{margin-top:4px}
+  .tbd-real{color:var(--ink-2);font-weight:600;text-transform:none;letter-spacing:0}
   .tb-block-row{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;border-bottom:1px solid var(--line);flex-wrap:wrap}
   .tb-block-row:last-child{border-bottom:none}
   .tb-block-row .tb-user{min-width:88px;flex-shrink:0}
@@ -174,10 +187,12 @@
   .save{padding:12px 26px;border-radius:11px;background:var(--grad);color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 10px 22px -12px rgba(224,30,55,.6)}
   .save:hover{filter:brightness(1.04)}
 
-  .copita-bar{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;border-radius:var(--radius-sm);background:var(--grad-soft);border:1px solid #f3d2d5}
-  .copita-bar .cup{font-size:22px}
-  .copita-bar .txt{font-size:13.5px;color:var(--ink)}
-  .copita-bar .txt b{font-weight:700}
+  .copita-bar{display:flex;align-items:center;gap:14px;padding:15px 18px;margin-bottom:18px;border-radius:var(--radius);background:var(--grad-soft);border:1px solid #f3d2d5}
+  .copita-bar .cup{font-size:28px}
+  .copita-bar .txt{display:flex;flex-direction:column;gap:2px}
+  .copita-bar .txt .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--red);font-weight:700}
+  .copita-bar .txt .who{font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink)}
+  .cierre-hl{color:var(--red-deep);background:#fff;border:1px solid #f3d2d5;padding:2px 9px;border-radius:7px;white-space:nowrap;font-family:var(--display)}
 
   .pleno{margin-top:18px;background:linear-gradient(160deg,#1B1D24,#25202A);border:1px solid #33353D;border-radius:var(--radius);padding:20px;box-shadow:0 18px 40px -20px rgba(0,0,0,.55);position:relative;overflow:hidden}
   .pleno::before{content:"";position:absolute;inset:0;background:radial-gradient(420px 180px at 100% -30%,rgba(224,30,55,.35),transparent 70%);pointer-events:none}
@@ -454,11 +469,11 @@
     <section class="view active" id="v-jornada">
       <div class="section-head">
         <div><div class="eyebrow" id="jor-eyebrow">Jornada —</div><h2>Tus pronósticos</h2></div>
-        <p id="jor-sub">14 partidos a 1·X·2. Acertar cada uno suma 1 punto.</p>
+        <p id="jor-sub"></p>
       </div>
 
       <div id="open-state">
-        <div class="notice lock" id="jNotice"><span class="ic">🔒</span><span>Hasta el cierre, <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos cuantas veces quieras antes del cierre.</span></div>
+        <div class="notice lock" id="jNotice"><span class="ic">🔒</span><span>Solo tú ves tus pronósticos hasta el cierre.</span></div>
         <div id="copita-block"></div>
         <div class="coupon" id="coupon"></div>
         <div id="pleno-block"></div>
@@ -490,7 +505,7 @@
     </section>
 
     <section class="view" id="v-tablas">
-      <div class="section-head"><div><div class="eyebrow">Pronósticos previos de temporada</div><h2>Las Tablas</h2></div><p>Se rellenan una vez antes de empezar. Valen mucho y deciden empates en la general.</p></div>
+      <div class="section-head"><div><div class="eyebrow">Pronósticos previos de temporada</div><h2>Las Tablas</h2></div></div>
       <div class="notice lock" id="tbNotice"><span class="ic">🔒</span><span>Igual que la jornada: hasta el 14 de agosto <b>solo ves las tuyas</b>; al cerrar se destapan las de todos.</span></div>
       <div class="tablas-grid" id="tablas-grid"></div>
     </section>
@@ -563,7 +578,8 @@ const SEGUNDA=["Dépor","Racing","Almería","Oviedo","Granada","Levante","Eibar"
 
 // Avatares temáticos por participante (emoji que evoca a su personaje, sin reproducir IP)
 const nrm=s=>(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();
-const AVATARS={dani:"⚡",javi:"🦁",leti:"❄️",mama:"🦸‍♀️",andres:"🤠",cristina:"🧡",fernando:"🥔",jorge:"🐗",jose:"🐾",junis:"☃️",luis:"🚀",tomas:"🧊"};
+const AVATARS={dani:"⚡",javi:"🦁",leti:"🚗",mama:"🦸‍♀️",andres:"🤠",cristina:"🚙",fernando:"🥔",jorge:"🐗",jose:"🐾",junis:"🏎️",luis:"🚀",tomas:"🧊"};
+const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
 const TEAM_EMOJI={"frozen":"❄️","toy story":"🤠","el rey leon":"🦁","los increibles":"🦸"};
 function avatarFor(usuario){return AVATARS[nrm(usuario)]||"";}
 function teamEmoji(nm){return TEAM_EMOJI[nrm(nm)]||"🏳️";}
@@ -640,12 +656,12 @@ function render(){
   if(STATE==="open"){renderCoupon();renderCopita();renderPleno();}
   else{renderJornadaClasif();renderReveal();renderPlenoReveal();}
   renderStandings();renderTeams();renderTablas();
-  document.getElementById("jor-sub").textContent=ROLE==="admin"?"Vista admin: aquí cargas los 14 partidos y fijas la hora de cierre.":"14 partidos a 1·X·2. Acertar cada uno suma 1 punto.";
+  document.getElementById("jor-sub").textContent=ROLE==="admin"?"Vista admin: aquí cargas los 14 partidos y fijas la hora de cierre.":"";
 }
 
 function renderCoupon(){
   const cop=ISCOPITA;
-  let h=`<div class="coupon-head"><span class="ttl">Boleto · Jornada ${window.JNUM||"—"}</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"1 · X · 2 &nbsp;•&nbsp; <span style=\"color:#ffd7dd\">2ª división en azul</span>"}</span></div>
+  let h=`<div class="coupon-head"><span class="ttl">Jornada ${window.JNUM||"—"}</span><span class="meta">${ROLE==="admin"?"Plantilla de partidos":"<span style=\"color:#ffd7dd\">2ª división en azul</span>"}</span></div>
     <div class="col-legend"><span>Nº</span><span>Partido</span><span class="opts"><span>1</span><span>X</span><span>2</span></span><span class="sth">${cop?"★":""}</span></div>`;
   const FX=(window.FIXTURES&&window.FIXTURES.length)?window.FIXTURES:FIX;
   FX.forEach((f,i)=>{const sel=myPred[i];
@@ -665,7 +681,7 @@ function toggleStar(i){if(window.LOCKED)return;if(myStars.has(i))myStars.delete(
 function renderCopita(){const el=document.getElementById("copita-block");
   el.innerHTML=ISCOPITA
     ?`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">Esta semana eres la <b>copita</b>. Rellena el <b>Pleno al 15</b> del partido que ha puesto Loterías y marca tus <b>8 destacados</b> (★) — los destacados no puntúan en la porra, son para tu control.</span></div>`
-    :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">La copita de esta jornada es <b>${window.COPITA||"—"}</b>. Rellena el Pleno al 15. Si lo clava, se salva de descansar.</span></div>`;
+    :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt"><span class="lbl">Copita de la jornada</span><b class="who">${cap(window.COPITA||"—")}</b></span></div>`;
 }
 function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
   const PL=window.PLENO||PLENO;
@@ -756,7 +772,7 @@ function renderStandings(){
     <td class="pos num">${i+1}</td>
     <td class="who">${avatarFor(p.usuario)?`<span class="avem">${avatarFor(p.usuario)}</span>`:''}<span class="who-nm">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</span></td>
     <td class="r ${p.dinero?'money':'dim'}">${p.dinero?p.dinero+'€':'—'}</td>
-    <td class="c cops">${p.copitas?`<span class="cup">🏆</span> ${p.copitas}`:`<span class="dim">0</span>`}</td>
+    <td class="c cops">${p.copitas?p.copitas:'<span class="dim">0</span>'}</td>
     <td class="c num ${p.tablas?'tbp':''}">${p.tablas}</td>
     <td class="r total num">${p.puntos}</td></tr>`).join("");
 }
@@ -964,7 +980,7 @@ async function loadJornada(uid){
       if(noticeEl) noticeEl.innerHTML='<span class="ic">😴</span><span>Esta jornada <b>descansas</b>: no te toca jugar, así que no puedes meter pronóstico. Vuelves la próxima.</span>';
     }else{
       coupon.classList.remove("locked");
-      if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+label+'</b>), <b>solo tú ves esto</b>. Puedes cambiar tus pronósticos las veces que quieras.</span>';
+      if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Solo tú ves esto. Cierra <b class="cierre-hl">'+label+'</b></span>';
       if(window.ISCOPITA && window.__savedPleno){
         const rs=document.querySelectorAll("#pleno-block .roller");
         if(rs.length===2){ rs[0].value=window.__savedPleno.local; rs[1].value=window.__savedPleno.visitante; }
@@ -1636,7 +1652,7 @@ async function loadTablas(uid){
   window.TB_LOCKED = cierre ? (new Date()>=cierre) : false;
   const tn=document.getElementById("tbNotice");
   if(tn){
-    if(window.TB_LOCKED) tn.innerHTML='<span class="ic">🔓</span><span>El plazo ha <b>cerrado</b>: aquí están las tablas de <b>todos</b>. Cuando metas los resultados reales, se marcarán en verde (pleno), azul (parcial) y rojo (fallo).</span>';
+    if(window.TB_LOCKED) tn.innerHTML='';
     else if(cierre) tn.innerHTML='<span class="ic">🔒</span><span>Hasta el cierre (<b>'+cierre.toLocaleString("es-ES",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})+'</b>) <b>solo ves las tuyas</b>. Puedes editarlas hasta entonces.</span>';
     else tn.innerHTML='<span class="ic">🔒</span><span>Rellena tus tablas y guárdalas. <b>Solo ves las tuyas</b> hasta que se fije y pase la fecha de cierre.</span>';
   }
@@ -1660,25 +1676,34 @@ async function renderTablasReveal(){
   people.sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const N=tbNorm;
   let html="";
+  // ── apartados sueltos: un toggle con los 6 ──
   const sueltos=[["campeon","Campeón de liga"],["pichichi","Pichichi"],["zarra","Trofeo Zarra"],["menosGoleado","Equipo menos goleado"],["maxGoleador","Equipo máximo goleador"],["primerDestituido","1º entrenador destituido"]];
+  let sInner="";
   sueltos.forEach(([k,label])=>{
     const rv = real && real.sueltos ? real.sueltos[k] : null;
-    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span>${rv?`<span class="pts">real: ${rv}</span>`:''}</div>`;
-    html+= people.map(p=>{
+    sInner+=`<div class="tbd-sub">${label}${rv?` · <span class="tbd-real">real: ${rv}</span>`:''}</div>`;
+    sInner+= people.map(p=>{
       const pick=p.sueltos[k]||"—";
       const cls = (real&&rv) ? (N(pick)===N(rv)?"tb-hit":"tb-miss") : "";
       const dbl = p.doble===k?'<span class="x2mini">×2</span>':'';
       return `<div class="tb-reveal-row"><span class="tb-user">${p.nombre}</span><span class="tb-pick ${cls}">${pick}${dbl}</span></div>`;
     }).join("");
-    html+=`</div>`;
   });
-  const blocks=[["champions","Champions League (1º–4º)",4],["p56","Puestos 5º y 6º",2],["desc2","Descienden a 2ª",3],["asc","Ascienden a 1ª",3],["rfef","Descienden a 1ª RFEF",4]];
-  blocks.forEach(([k,label,n])=>{
+  html+=detailsTbd("Apartados sueltos","5 pts cada uno · el ×2 vale 10",sInner);
+  // ── bloques ordenados: un toggle cada uno ──
+  const blocks=[
+    ["champions","Champions League (1º–4º)",4,"5 puesto exacto · 3 equipo · +15 los 4"],
+    ["p56","Puestos 5º y 6º",2,"5 puesto exacto · 3 equipo"],
+    ["desc2","Descienden a 2ª",3,"5 puesto exacto · 3 equipo · +15 los 3"],
+    ["asc","Ascienden a 1ª",3,"5 puesto exacto · 3 equipo · +15 los 3"],
+    ["rfef","Descienden a 1ª RFEF",4,"5 puesto exacto · 3 equipo · +15 los 4"]
+  ];
+  blocks.forEach(([k,label,n,pts])=>{
     const rarr = real && Array.isArray(real[k]) ? real[k] : null;
     const rset = rarr ? rarr.map(N).filter(Boolean) : null;
-    html+=`<div class="tb-card"><div class="tbh"><span class="t">${label}</span></div>`;
-    if(rarr){ html+=`<div class="tb-block-row"><span class="tb-user">Real</span><span class="tb-chips">${Array.from({length:n},(_,i)=>`<span class="tb-chip tb-real-chip"><span class="p">${i+1}</span>${rarr[i]||'—'}</span>`).join("")}</span></div>`; }
-    html+= people.map(p=>{
+    let inner="";
+    if(rarr){ inner+=`<div class="tb-block-row"><span class="tb-user">Real</span><span class="tb-chips">${Array.from({length:n},(_,i)=>`<span class="tb-chip tb-real-chip"><span class="p">${i+1}</span>${rarr[i]||'—'}</span>`).join("")}</span></div>`; }
+    inner+= people.map(p=>{
       const arr=p[k]||[];
       const chips=Array.from({length:n},(_,i)=>{
         const pick=arr[i]||"—"; let cls="";
@@ -1687,9 +1712,12 @@ async function renderTablasReveal(){
       }).join("");
       return `<div class="tb-block-row"><span class="tb-user">${p.nombre}</span><span class="tb-chips">${chips}</span></div>`;
     }).join("");
-    html+=`</div>`;
+    html+=detailsTbd(label,pts,inner);
   });
   grid.innerHTML=html;
+}
+function detailsTbd(title,pts,inner){
+  return `<details class="tbd"><summary><span class="tbd-head"><span class="tbd-t">${title}</span><span class="tbd-pts">${pts}</span></span><span class="tbd-chev">⌄</span></summary><div class="tbd-body">${inner}</div></details>`;
 }
 
 document.addEventListener("click", async (e)=>{
