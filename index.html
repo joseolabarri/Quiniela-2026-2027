@@ -292,6 +292,8 @@
   .plr-out .p4{font-size:11px;font-weight:600;opacity:.95}
   .plr.ok .plr-out{background:var(--green);color:#fff}
   .plr.no .plr-out{background:var(--red);color:#fff}
+  .plr.pend .plr-out{background:#3A3C45;color:#c3c7ce}
+  .plr-pend{font-weight:700;font-size:12px}
 
   /* CLASIFICACIÓN */
   .seg-toggle{display:inline-flex;background:var(--bg-soft2);border-radius:99px;padding:3px}
@@ -1137,15 +1139,19 @@ async function showClosed(data){
 
   // pleno destape (si hay copita con pronóstico)
   const cop=pronos.find(p=>p.usuario===copita);
-  if(cop && cop.plenoPronostico && plenoReal){
-    const ok=Number(cop.plenoPronostico.local)===Number(plenoReal.local)&&Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
+  if(cop && cop.plenoPronostico){
+    const hasReal = plenoReal && (plenoReal.local!=="" && plenoReal.local!=null && plenoReal.visitante!=="" && plenoReal.visitante!=null);
+    const ok = hasReal && Number(cop.plenoPronostico.local)===Number(plenoReal.local) && Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
     const pl = data.pleno || {};
     const home = pl.local || "Local", away = pl.visitante || "Visitante";
-    plEl.innerHTML=`<div class="plr ${ok?'ok':'no'}"><div class="plr-badge">🏆</div>
+    let out;
+    if(!hasReal) out='<span class="plr-pend">Pendiente del resultado</span>';
+    else out = ok ? 'Acertado<span class="p4">+4 · se salva 🛟</span>' : 'Fallado';
+    plEl.innerHTML=`<div class="plr ${hasReal?(ok?'ok':'no'):'pend'}"><div class="plr-badge">🏆</div>
       <div class="plr-main"><div class="plr-h">Pleno al 15 · copita ${cop.nombre||copita}</div>
-      <div class="plr-match"><span class="tm">${home}</span><span class="plr-real">${plenoReal.local}–${plenoReal.visitante}</span><span class="tm">${away}</span></div>
+      <div class="plr-match"><span class="tm">${home}</span><span class="plr-real">${hasReal?`${plenoReal.local}–${plenoReal.visitante}`:"—"}</span><span class="tm">${away}</span></div>
       <div class="plr-guess-line">La copita puso <b>${cop.plenoPronostico.local}–${cop.plenoPronostico.visitante}</b></div></div>
-      <div class="plr-out">${ok?'Acertado<span class="p4">+4 · se salva 🛟</span>':'Fallado'}</div></div>`;
+      <div class="plr-out">${out}</div></div>`;
   }else{ plEl.innerHTML=""; }
 
   // sorteo de moneda
