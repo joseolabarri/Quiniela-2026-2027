@@ -236,6 +236,10 @@
   .jcl .st.sigue{color:var(--green);background:var(--green-soft)}
   .jcl .st.desc{color:#fff;background:#D9534F}
   .jcl .st.cop{color:#fff;background:var(--grad)}
+  .jcl .pcell{text-align:right;width:74px;white-space:nowrap;padding-right:16px}
+  .jcl .pc-clasif{font-family:var(--display);font-weight:700;font-size:14px;color:var(--green)}
+  .jcl .pc-cop{font-family:var(--display);font-weight:700;font-size:13px;color:var(--red)}
+  .jcl .pc-dim{color:var(--ink-3)}
   .jcl .st.coin{color:var(--amber-ink);background:#FFF1DC;border:1px solid var(--amber-line)}
   .coin-callout{padding:15px 16px;border-radius:12px;background:var(--amber-bg);border:1px solid var(--amber-line);font-size:13.5px;color:var(--ink);margin-bottom:16px}
   .coin-callout .ct{font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px}
@@ -330,7 +334,7 @@
   table.std .tbp{color:var(--blue);font-weight:700}
   .std-ic{display:none}
   table.std .cup{color:var(--red)}
-  .avem{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border-radius:8px;background:var(--bg-soft2);font-size:15px;margin-right:9px;line-height:1;flex-shrink:0}
+  .avem{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;width:27px;height:27px;border-radius:8px;background:var(--bg-soft2);font-size:15px;margin-right:9px;line-height:1;flex-shrink:0}
   .avem.sm{width:23px;height:23px;font-size:13px;margin-right:8px}
   table.std .who{display:flex;align-items:center}
   table.std .who .who-nm{display:inline-flex;flex-direction:column;font-weight:600}
@@ -1165,7 +1169,12 @@ async function showClosed(data){
     });
     if(!winner) pendingGroups.push({key, members, motivo});
   });
-  renderRealClasif(rows);
+  let probs=null, probState='hide';
+  const pendCount = resultados.filter(r=>!r).length;
+  if(pendCount>0 && rows.length>=8){
+    probs = classifyProbs(pronos, resultados, partidos, 8000); probState='show';
+  }
+  renderRealClasif(rows, probs, probState);
 
   // sorteo de moneda
   if(pendingGroups.length){
@@ -1235,9 +1244,11 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
   }
 }
 
-function renderRealClasif(rows){
+function renderRealClasif(rows, probs, probState){
   const n=rows.length;
   const showRotation = n>=8;
+  const showProb = probState==='show' && probs;
+  const showFew = probState==='few';
   let body="";
   rows.forEach((p,i)=>{
     let st,cls;
@@ -1248,15 +1259,27 @@ function renderRealClasif(rows){
     else if(showRotation){ st="Clasificado"; cls="sigue"; }
     else { st=""; cls="sigue"; }
     const nota = p.olvido ? 'Olvido · mitad de puntos' : (p.note||"");
+    let probCell="";
+    if(showProb){
+      const pr=probs[p.usuario]||{pClasif:0,pCopita:0};
+      const cl=Math.round(pr.pClasif*100);
+      const secured = pr.pClasif>=0.9995;
+      let inner=`<span class="pc-clasif">${cl}%</span>`;
+      if(secured && pr.pCopita>0) inner=`<span class="pc-cop">🏆 ${Math.round(pr.pCopita*100)}%</span>`;
+      probCell=`<td class="pcell">${inner}</td>`;
+    } else if(showFew){
+      probCell=`<td class="pcell"><span class="pc-dim">—</span></td>`;
+    }
     body+=`<tr class="r-${cls}">
       <td class="pos num">${i+1}º</td>
-      <td class="nm">${p.nombre||p.usuario}${(p.isCop&&!p.olvido)?' <span style="color:var(--red)">🏆</span>':''}${nota?`<span class="note">${nota}</span>`:''}</td>
+      <td class="nm">${avatarFor(p.usuario)?`<span class="avem sm">${avatarFor(p.usuario)}</span>`:''}${p.nombre||p.usuario}${(p.isCop&&!p.olvido)?' <span style="color:var(--red)">🏆</span>':''}${nota?`<span class="note">${nota}</span>`:''}</td>
       <td class="pts num">${p.pts}</td>
-      <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td></tr>`;
+      <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td>${probCell}</tr>`;
   });
+  const legend = showProb ? ' · <span style="color:var(--green)">% opciones de clasificarse</span>' : (showFew ? ' · las opciones aparecen con 8 resultados' : '');
   document.getElementById("jorClasif").innerHTML=
     `<div class="jcl"><div class="jh"><span class="t">Clasificación de la jornada</span>
-      <span class="sub">${n} jugaron${showRotation?' · 4 se clasifican · 4 se eliminan':''}</span></div>
+      <span class="sub">${n} jugaron${showRotation?' · 4 se clasifican · 4 se eliminan':''}${legend}</span></div>
       <table><tbody>${body}</tbody></table></div>`;
 }
 
@@ -1787,6 +1810,34 @@ function scoreSignos(signos, resultados, partidos){
     }
   }
   return {pts,seg2,away,draw};
+}
+
+// Probabilidad de clasificarse / ser copita simulando los partidos que faltan.
+// Requiere >=8 resultados metidos y que aún queden partidos. Devuelve mapa usuario -> {pClasif,pCopita} o null.
+function classifyProbs(pronos, resultados, partidos, N){
+  const pend=[]; for(let i=0;i<14;i++){ if(!resultados[i]) pend.push(i); }
+  const n=pronos.length;
+  if(n<8 || pend.length===0) return null;
+  const cut=n-4; // se clasifica quien queda por delante del corte (rank < cut)
+  // puntos base con lo ya conocido
+  const base=pronos.map(p=>scoreSignos(p.signos, resultados, partidos));
+  const clasif=new Array(n).fill(0), copita=new Array(n).fill(0);
+  const sc=new Array(n);
+  for(let k=0;k<n;k++) sc[k]={i:k,pts:0,seg2:0,away:0,draw:0,r:0};
+  for(let s=0;s<N;s++){
+    for(let k=0;k<n;k++){ const b=base[k],o=sc[k]; o.i=k; o.pts=b.pts; o.seg2=b.seg2; o.away=b.away; o.draw=b.draw; o.r=Math.random(); }
+    for(let j=0;j<pend.length;j++){
+      const idx=pend[j], roll=Math.random(), out= roll<0.3333?"1":(roll<0.6666?"X":"2");
+      const seg=partidos[idx]&&partidos[idx].seg, is2=out==="2", isX=out==="X";
+      for(let k=0;k<n;k++){ if(pronos[k].signos[idx]===out){ const o=sc[k]; o.pts++; if(seg)o.seg2++; if(is2)o.away++; if(isX)o.draw++; } }
+    }
+    sc.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw || a.r-b.r);
+    for(let rank=0;rank<n;rank++){ if(rank<cut) clasif[sc[rank].i]++; }
+    copita[sc[0].i]++;
+  }
+  const map={};
+  pronos.forEach((p,k)=>{ map[p.usuario]={pClasif:clasif[k]/N, pCopita:copita[k]/N}; });
+  return map;
 }
 
 async function loadGeneral(){
