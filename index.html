@@ -445,6 +445,14 @@
     .std-ic{display:inline-flex!important}.std-lb{display:none}
     #demobar{flex-wrap:wrap;justify-content:center;border-radius:20px}.countdown .lbl{display:none}
     .reveal-desktop{display:none}.reveal-mobile{display:block}
+    .jcl td{padding-left:6px;padding-right:6px}
+    .jcl td.pos{padding-left:12px}
+    .jcl .avem.sm{width:20px;height:20px;font-size:12px;margin-right:6px}
+    .jcl .nm{font-size:13px}
+    .jcl .st{font-size:10px;padding:3px 7px}
+    .jcl .pcell{width:50px;padding-right:12px}
+    .jcl .pc-clasif{font-size:13px}.jcl .pc-cop{font-size:12px}
+    .jcl .nm .note{font-size:10.5px}
     .tabs{position:fixed;bottom:0;left:0;right:0;top:auto;border-top:1px solid var(--line);border-bottom:none;padding:7px 4px calc(7px + env(safe-area-inset-bottom));gap:2px;justify-content:space-around;box-shadow:0 -10px 30px -18px rgba(0,0,0,.22);z-index:40;overflow:visible}
     .tab{flex:1;flex-direction:column;gap:3px;padding:5px 3px;font-size:10px;border-radius:14px;background:none;font-weight:600}
     .tab .tab-ic{display:block;width:23px;height:23px}
@@ -734,10 +742,10 @@ function computeJornada(){
     const same=(x,y)=>x&&y&&x.pts===y.pts&&x.seg2===y.seg2&&x.away===y.away&&x.draw===y.draw;
     p.coin=same(p,prev)||same(p,next);
     if(prev&&prev.pts===p.pts){
-      if(prev.seg2!==p.seg2)p.note=`Empate a ${p.pts} con ${prev.name} · desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
-      else if(prev.away!==p.away)p.note=`Empate a ${p.pts} · desempata por visitantes (${p.away} vs ${prev.away})`;
-      else if(prev.draw!==p.draw)p.note=`Empate a ${p.pts} · desempata por empates (${p.draw} vs ${prev.draw})`;
-      else p.note=`Empate a ${p.pts} · iguales en 2ª (${p.seg2}), visitantes (${p.away}) y empates (${p.draw})`;
+      if(prev.seg2!==p.seg2)p.note=`Desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
+      else if(prev.away!==p.away)p.note=`Desempata por visitantes (${p.away} vs ${prev.away})`;
+      else if(prev.draw!==p.draw)p.note=`Desempata por empates (${p.draw} vs ${prev.draw})`;
+      else p.note=`Iguales en 2ª, visitantes y empates`;
     }
   });
   return arr;
@@ -1146,10 +1154,10 @@ async function showClosed(data){
   rows.forEach((p,i)=>{
     const prev=rows[i-1];
     if(prev && prev.pts===p.pts){
-      if(prev.seg2!==p.seg2) p.note=`Empate a ${p.pts} · desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
-      else if(prev.away!==p.away) p.note=`Empate a ${p.pts} · por visitantes (${p.away} vs ${prev.away})`;
-      else if(prev.draw!==p.draw) p.note=`Empate a ${p.pts} · por empates (${p.draw} vs ${prev.draw})`;
-      else p.note=`Empate a ${p.pts}`;
+      if(prev.seg2!==p.seg2) p.note=`Desempata por 2ª (${p.seg2} vs ${prev.seg2})`;
+      else if(prev.away!==p.away) p.note=`Desempata por visitantes (${p.away} vs ${prev.away})`;
+      else if(prev.draw!==p.draw) p.note=`Desempata por empates (${p.draw} vs ${prev.draw})`;
+      else p.note="";
     }
   });
   const pendingGroups=[];
