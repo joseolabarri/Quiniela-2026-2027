@@ -684,7 +684,7 @@ function showAppFor(name){
   go("jornada");
   render();
 }
-function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");}
+function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");if(v==="admin"&&window.ROLE==="admin"&&window.refreshAdminCount)window.refreshAdminCount();}
 function setRole(r){ROLE=r;document.getElementById("r-part").classList.toggle("on",r==="part");document.getElementById("r-admin").classList.toggle("on",r==="admin");document.getElementById("uname").textContent=r==="admin"?"José":"Leti I";document.getElementById("uav").textContent=r==="admin"?"J":"L";render();}
 function setState(s){STATE=s;document.getElementById("s-open").classList.toggle("on",s==="open");document.getElementById("s-closed").classList.toggle("on",s==="closed");render();}
 function setCopita(b){ISCOPITA=b;document.getElementById("c-yes").classList.toggle("on",b);document.getElementById("c-no").classList.toggle("on",!b);render();}
@@ -1030,7 +1030,7 @@ async function loadJornada(uid){
 
 function coinGroups(sorted){
   const groups=[]; let i=0;
-  const same=(a,b)=>a.pts===b.pts&&a.seg2===b.seg2&&a.away===b.away&&a.draw===b.draw;
+  const same=(a,b)=>!a.olvido&&!b.olvido&&a.pts===b.pts&&a.seg2===b.seg2&&a.away===b.away&&a.draw===b.draw;
   while(i<sorted.length){ let j=i; while(j+1<sorted.length && same(sorted[j+1],sorted[i])) j++; if(j>i) groups.push([i,j]); i=j+1; }
   return groups;
 }
@@ -1069,16 +1069,20 @@ async function showClosed(data){
   const copita = data.copita||"";
   const plenoReal = data.plenoResultado||null;
 
-  const nombreDe={}; const vivos=new Set();
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario);}); }catch(e){}
+  const nombreDe={}; const vivos=new Set(); const uidToUser={};
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario); uidToUser[d.id]=x.usuario;}); }catch(e){}
   let pronos=[];
   try{
     const qs=await getDocs(collection(db,"jornadas",ACTIVE_JID,"pronosticos"));
     qs.forEach(d=>{ const x=d.data(); const u=x.usuario||d.id.slice(0,6); if(vivos.size && !vivos.has(u)) return; pronos.push({usuario:u, nombre:nombreDe[u]||u, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null, destacados:Array.isArray(x.destacados)?x.destacados:[]}); });
   }catch(e){ pronos=[]; }
 
-  // ── olvidos: quiniela por defecto (y 0–0 si era copita) ──
-  const olvidoSet = new Set(Array.isArray(data.olvidos)?data.olvidos:[]);
+  // ── olvidos automáticos: quien debía jugar (juegan) y no dejó pronóstico ──
+  const olvidoSet = new Set();
+  const jueganUids = Array.isArray(data.juegan)?data.juegan:[];
+  const submitted = new Set(pronos.map(p=>p.usuario));
+  jueganUids.forEach(uid=>{ const u=uidToUser[uid]; if(u && vivos.has(u) && !submitted.has(u)) olvidoSet.add(u); });
+  (Array.isArray(data.olvidos)?data.olvidos:[]).forEach(u=>{ if(vivos.has(u)) olvidoSet.add(u); }); // compat con olvidos antiguos
   const OLV="1X21X21X21X21X".split("");
   if(olvidoSet.size){
     olvidoSet.forEach(u=>{
@@ -1151,7 +1155,7 @@ async function showClosed(data){
     if(p.olvido) pts=Math.floor(pts/2);
     return {usuario:p.usuario,nombre:p.nombre,isCop,plenoHit,pts,seg2,away,draw,olvido:!!p.olvido};
   });
-  rows.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  rows.sort((a,b)=> (a.olvido?1:0)-(b.olvido?1:0) || b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
   const cg = applyCoin(rows, data.moneda);
   rows.forEach((p,i)=>{
     const prev=rows[i-1];
@@ -1335,6 +1339,35 @@ function toLocalInput(d){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
 }
 
+async function entregasCardHtml(){
+  let parts=[];
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario});}); }catch(e){}
+  try{
+    const actJid = ACTIVE_JID || ADMIN_JID;
+    const actSnap = await getDoc(doc(db,"jornadas",actJid));
+    const act = actSnap.exists()? actSnap.data():{};
+    const uid2u={}, name2={}; parts.forEach(p=>{ uid2u[p.uid]=p.usuario; name2[p.usuario]=p.nombre; });
+    const subs=new Set();
+    try{ const qs=await getDocs(collection(db,"jornadas",actJid,"pronosticos")); qs.forEach(d=>{ const x=d.data(); const u=x.usuario||uid2u[d.id]; if(u) subs.add(u); }); }catch(e){}
+    const actJuegan = Array.isArray(act.juegan)?act.juegan:[];
+    const jugadores = actJuegan.length ? actJuegan.map(uid=>uid2u[uid]).filter(Boolean) : parts.map(p=>p.usuario);
+    const hechos = jugadores.filter(u=>subs.has(u)).length;
+    const faltan = jugadores.filter(u=>!subs.has(u)).map(u=>name2[u]||u);
+    const nJug = jugadores.length;
+    return `<div class="adm" id="admin-count" style="background:linear-gradient(160deg,#1B1D24,#25202A);border:1px solid #33353D;color:#fff">
+      <h4 style="color:#c3c7ce;margin-bottom:6px">Pronósticos · jornada activa (Nº ${act.numero||"?"})</h4>
+      <div style="font-family:var(--display);font-weight:700;font-size:26px;line-height:1">${hechos} <span style="color:#9aa0ab;font-size:18px">de ${nJug}</span></div>
+      <div style="margin-top:8px;font-size:12.5px;color:#9aa0ab">${faltan.length? 'Faltan: <b style="color:#EAEBEE">'+faltan.join(", ")+'</b>' : 'Todos han metido su pronóstico ✓'}</div>
+      <div style="margin-top:4px;font-size:11px;color:#6a6e78">Solo tú (admin) ves este dato. Se actualiza al abrir esta pestaña.</div>
+    </div>`;
+  }catch(e){ return `<div class="adm" id="admin-count"></div>`; }
+}
+async function refreshAdminCount(){
+  const el=document.getElementById("admin-count");
+  if(el) el.outerHTML = await entregasCardHtml();
+}
+window.refreshAdminCount = refreshAdminCount;
+
 async function buildAdmin(){
   const body=document.getElementById("admin-body");
   if(!ADMIN_JID){
@@ -1356,6 +1389,8 @@ async function buildAdmin(){
   let parts=[];
   try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,dinero:x.dinero||0});}); }catch(e){}
   parts.sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  // ── contador de pronósticos de la jornada ACTIVA (solo lo ve el admin) ──
+  const countHtml = await entregasCardHtml();
   const juegan = Array.isArray(data.juegan)?data.juegan:[];
   const olvidos = Array.isArray(data.olvidos)?data.olvidos:[];
   const fx = (Array.isArray(data.partidos)&&data.partidos.length)
@@ -1390,6 +1425,7 @@ async function buildAdmin(){
   }
 
   body.innerHTML=`
+    ${countHtml}
     <div class="adm" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-weight:800">Editando la jornada Nº</span>
       <input type="text" id="ax-num" value="${numero}" style="width:60px;text-align:center;padding:9px 10px;border:1.5px solid var(--line-2);border-radius:8px;font-family:inherit;font-size:14px">
@@ -1400,21 +1436,16 @@ async function buildAdmin(){
       <div class="adm-legend"><span></span><span>Local</span><span>Visitante</span><span>2ª</span></div>
       ${rows}
     </div>
-    <div class="adm"><h4>Pleno al 15 y copita</h4>
+    <div class="adm"><h4>Pleno al 15</h4>
       <div class="row2">
         <div><label class="fl">Pleno · local</label><input type="text" id="ax-pl-local" value="${esc(pleno.local)}"></div>
         <div><label class="fl">Pleno · visitante</label><input type="text" id="ax-pl-visit" value="${esc(pleno.visitante)}"></div>
       </div>
-      <div><label class="fl">Copita (usuario)</label><input type="text" id="ax-copita" value="${esc(copita)}" placeholder="ej. leti"></div>
     </div>
     <div class="adm"><h4>Hora de cierre</h4>
       <input type="datetime-local" id="ax-cierre" value="${toLocalInput(cierre)}">
-      <div class="hint">Al publicar, la familia verá estos partidos y podrá meter sus pronósticos hasta esta hora. Puedes volver aquí y editarlos cuando quieras.</div>
+      <div class="hint">Al publicar, la familia verá estos partidos y podrá meter sus pronósticos hasta esta hora. La <b>copita</b> y <b>quiénes juegan</b> se calculan solos a partir de la jornada anterior (en la jornada 1 juegan los 12).</div>
       <div style="margin-top:14px"><button class="pub" id="ax-publish">Publicar jornada</button></div>
-    </div>
-    <div class="adm"><h4>Quién juega esta jornada</h4>
-      <div class="hint" style="margin:0 0 10px">Marca a los que juegan. Los no marcados <b>no podrán</b> meter pronóstico esta jornada (descansan). Se guarda al pulsar "Publicar jornada". Si no marcas a nadie, se entiende que juegan todos.</div>
-      <div class="juega-grid">${parts.map(p=>`<label class="juega-item"><input type="checkbox" class="jx" data-uid="${p.uid}" ${juegan.includes(p.uid)?"checked":""}> ${p.nombre}</label>`).join("") || '<span class="hint" style="margin:0">Aún no hay participantes dados de alta.</span>'}</div>
     </div>
     <div class="adm"><h4>Resultados reales</h4>
       <div class="hint" style="margin:0 0 12px">Tras jugarse los partidos, marca el resultado real de cada uno y del Pleno, y guarda. Con esto se calcula la clasificación de la jornada cerrada.</div>
@@ -1423,9 +1454,7 @@ async function buildAdmin(){
         <div><label class="fl">Pleno real · local</label><input type="text" id="ax-plr-local" value="${esc(plenoR.local)}"></div>
         <div><label class="fl">Pleno real · visitante</label><input type="text" id="ax-plr-visit" value="${esc(plenoR.visitante)}"></div>
       </div>
-      <div style="margin:16px 0 8px;font-weight:700;font-size:13.5px">Olvidos de esta jornada</div>
-      <div class="hint" style="margin:0 0 10px">Marca a quien <b>se le olvidó</b> jugar. Al guardar, se le pone la quiniela por defecto (1·X·2… y 0–0 si era copita), se le cuenta <b>la mitad</b> de los puntos (redondeando hacia abajo) y queda <b>eliminado</b>. Márcalo cuando ya tengas los 14 resultados puestos.</div>
-      <div class="juega-grid">${parts.map(p=>`<label class="juega-item"><input type="checkbox" class="olv" data-user="${p.usuario}" ${olvidos.includes(p.usuario)?"checked":""}> ${p.nombre}</label>`).join("") || '<span class="hint" style="margin:0">Aún no hay participantes.</span>'}</div>
+      <div class="hint" style="margin:14px 0 0">Los <b>olvidos</b> se detectan solos al cerrar el plazo: a quien debía jugar y no dejó pronóstico se le aplica automáticamente la quiniela por defecto, la mitad de puntos y la eliminación.</div>
       <div style="margin-top:14px"><button class="pub" id="ax-save-res">Guardar resultados</button></div>
     </div>
     <div class="adm"><h4>Cierre de las Tablas</h4>
@@ -1655,10 +1684,9 @@ async function saveResultados(){
   const sels=[...document.querySelectorAll(".ax-res")].map(s=>s.value);
   const resultados=sels.map(v=> (v==="1"||v==="X"||v==="2")?v:null);
   const plenoResultado={ local:document.getElementById("ax-plr-local").value.trim(), visitante:document.getElementById("ax-plr-visit").value.trim() };
-  const olvidos=[...document.querySelectorAll(".olv:checked")].map(el=>el.dataset.user);
   const old=bp.textContent; bp.disabled=true; bp.textContent="Guardando…";
   try{
-    await setDoc(doc(db,"jornadas",ADMIN_JID), { resultados, plenoResultado, olvidos }, { merge:true });
+    await setDoc(doc(db,"jornadas",ADMIN_JID), { resultados, plenoResultado }, { merge:true });
     toast("Resultados guardados ✓", true);
     if(currentUid) loadJornada(currentUid);
     loadGeneral();
@@ -1669,6 +1697,47 @@ async function saveResultados(){
   }finally{ bp.disabled=false; bp.textContent=old; }
 }
 
+// Calcula sola la copita y quiénes juegan la jornada `numero`.
+// J1: juegan los 12, sin copita. J>=2: mira la jornada anterior (cerrada y con resultados).
+async function autoCopitaYJuegan(numero){
+  const parts=[];
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id, usuario:x.usuario});}); }catch(e){}
+  const allUids=parts.map(p=>p.uid);
+  if(numero<=1) return { copita:"", juegan:allUids };
+  const prevJid=jid(numero-1);
+  let prev=null;
+  try{ const s=await getDoc(doc(db,"jornadas",prevJid)); if(s.exists()) prev=s.data(); }catch(e){}
+  if(!prev) return { copita:"", juegan:allUids, warn:"no-prev" };
+  const resultados=(Array.isArray(prev.resultados)&&prev.resultados.length===14)?prev.resultados:null;
+  if(!resultados) return { copita:"", juegan:allUids, warn:"no-results" };
+  const partidos=Array.isArray(prev.partidos)?prev.partidos:[];
+  const uidToUser={}; parts.forEach(p=>uidToUser[p.uid]=p.usuario);
+  const valid=new Set(parts.map(p=>p.usuario));
+  const OLV="1X21X21X21X21X".split("");
+  let pron=[];
+  try{ const qs=await getDocs(collection(db,"jornadas",prevJid,"pronosticos")); qs.forEach(d=>{const x=d.data(); const u=x.usuario||uidToUser[d.id]; if(u && valid.has(u)) pron.push({usuario:u, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null});}); }catch(e){}
+  const submitted=new Set(pron.map(p=>p.usuario));
+  (Array.isArray(prev.juegan)?prev.juegan:[]).forEach(uid=>{ const u=uidToUser[uid]; if(u && valid.has(u) && !submitted.has(u)) pron.push({usuario:u, signos:OLV.slice(), plenoPronostico:(u===prev.copita?{local:0,visitante:0}:null), olvido:true}); });
+  (Array.isArray(prev.olvidos)?prev.olvidos:[]).forEach(u=>{ const p=pron.find(x=>x.usuario===u); if(p){ p.signos=OLV.slice(); p.plenoPronostico=(u===prev.copita?{local:0,visitante:0}:null); p.olvido=true; } });
+  if(!pron.length) return { copita:"", juegan:allUids, warn:"no-pron" };
+  const rows=pron.map(p=>{
+    const sc=scoreSignos(p.signos,resultados,partidos);
+    let pts=sc.pts;
+    if(p.usuario===prev.copita && prev.plenoResultado && p.plenoPronostico
+       && Number(p.plenoPronostico.local)===Number(prev.plenoResultado.local)
+       && Number(p.plenoPronostico.visitante)===Number(prev.plenoResultado.visitante)) pts+=4;
+    if(p.olvido) pts=Math.floor(pts/2);
+    return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw, olvido:!!p.olvido};
+  });
+  rows.sort((a,b)=> (a.olvido?1:0)-(b.olvido?1:0) || b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  applyCoin(rows, prev.moneda);
+  const copita = rows.length ? rows[0].usuario : "";
+  const n=rows.length;
+  const elim = new Set((n>4 ? rows.slice(n-4) : rows).map(r=>r.usuario));
+  const juegan = parts.filter(p=>!elim.has(p.usuario)).map(p=>p.uid);
+  return { copita, juegan };
+}
+
 async function publishJornada(){
   const bp=document.getElementById("ax-publish");
   const locals=[...document.querySelectorAll(".ax-local")].map(el=>el.value.trim());
@@ -1677,19 +1746,20 @@ async function publishJornada(){
   const partidos=[];
   for(let i=0;i<14;i++) partidos.push({local:locals[i]||"", visitante:visits[i]||"", seg:!!segs[i]});
   const pleno={local:document.getElementById("ax-pl-local").value.trim(), visitante:document.getElementById("ax-pl-visit").value.trim()};
-  const copita=document.getElementById("ax-copita").value.trim().toLowerCase();
   const numero=parseInt(document.getElementById("ax-num").value,10)||1;
   const targetJid=jid(numero);
   const cierreVal=document.getElementById("ax-cierre").value;
   if(!cierreVal){ toast("Pon una hora de cierre.", false); return; }
   const cierreTs=Timestamp.fromDate(new Date(cierreVal));
-  const juegan=[...document.querySelectorAll(".jx:checked")].map(el=>el.dataset.uid);
   const old=bp.textContent; bp.disabled=true; bp.textContent="Publicando…";
   try{
-    await setDoc(doc(db,"jornadas",targetJid), { numero, partidos, pleno, copita, cierre: cierreTs, juegan }, { merge:true });
+    const auto=await autoCopitaYJuegan(numero);
+    if(auto.warn==="no-results") toast("Ojo: la jornada anterior aún no tiene resultados. Se ha publicado con todos jugando.", false);
+    await setDoc(doc(db,"jornadas",targetJid), { numero, partidos, pleno, copita:auto.copita, cierre: cierreTs, juegan:auto.juegan }, { merge:true });
     await setDoc(doc(db,"config","estado"), { jornadaActual: targetJid }, { merge:true });
     ADMIN_JID=targetJid; ACTIVE_JID=targetJid;
-    toast("Jornada "+numero+" publicada ✓ (ya es la activa)", true);
+    const info = numero>1 && auto.copita ? " · copita: "+auto.copita+" · juegan "+auto.juegan.length : "";
+    toast("Jornada "+numero+" publicada ✓"+info, true);
     if(currentUid) loadJornada(currentUid);
     loadGeneral();
   }catch(err){
@@ -1856,6 +1926,7 @@ async function loadGeneral(){
     const ps=await getDocs(collection(db,"participantes"));
     ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:0}; });
   }catch(e){}
+  const uidToUser={}; Object.values(acc).forEach(a=>{ uidToUser[a.uid]=a.usuario; });
   let jornadas=[];
   try{ const js=await getDocs(collection(db,"jornadas")); js.forEach(d=>jornadas.push({id:d.id,data:d.data()})); }catch(e){}
   for(const j of jornadas){
@@ -1863,11 +1934,15 @@ async function loadGeneral(){
     const resultados=(Array.isArray(data.resultados)&&data.resultados.length===14)?data.resultados:null;
     if(!resultados) continue;
     const partidos=Array.isArray(data.partidos)?data.partidos:[];
-    const olvidoSet=new Set(Array.isArray(data.olvidos)?data.olvidos:[]);
     const OLV="1X21X21X21X21X".split("");
     let pron=[];
     try{ const qs=await getDocs(collection(db,"jornadas",j.id,"pronosticos")); qs.forEach(d=>{const x=d.data(); pron.push({usuario:x.usuario||d.id, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null});}); }
     catch(e){ continue; }
+    // olvidos automáticos: quien debía jugar y no dejó pronóstico
+    const olvidoSet=new Set();
+    const submitted=new Set(pron.map(p=>p.usuario));
+    (Array.isArray(data.juegan)?data.juegan:[]).forEach(uid=>{ const u=uidToUser[uid]; if(u && acc[u] && !submitted.has(u)) olvidoSet.add(u); });
+    (Array.isArray(data.olvidos)?data.olvidos:[]).forEach(u=>{ if(acc[u]) olvidoSet.add(u); });
     // olvidos: quiniela por defecto (0–0 si copita)
     olvidoSet.forEach(u=>{
       let p=pron.find(x=>x.usuario===u);
