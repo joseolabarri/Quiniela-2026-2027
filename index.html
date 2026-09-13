@@ -245,7 +245,17 @@
   .coin-callout .ct{font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:8px}
   .coin-callout p{color:var(--ink-2);margin-top:6px}
   .coin-callout b{color:var(--ink)}
-  .detail-h{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2);margin:22px 0 12px}
+  .detail-h{margin:22px 0 12px}
+  .dh-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .dh-row2{margin-top:9px}
+  .dh-title{font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-2)}
+  .dh-star{font-size:12px;font-weight:600;color:var(--ink-2)}
+  .pend-toggle{font-size:12px;font-weight:700;color:var(--ink-2);background:var(--bg-soft2);border:1px solid var(--line-2);padding:5px 12px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:background .15s,color .15s,border-color .15s}
+  .pend-toggle::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-3)}
+  .pend-toggle:hover{border-color:var(--ink-3)}
+  .pend-toggle.active{background:var(--grad);color:#fff;border-color:transparent}
+  .pend-toggle.active::before{background:#fff}
+  .pend-toggle[hidden]{display:none}
 
   /* REVEAL grid */
   .reveal-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
@@ -278,6 +288,8 @@
   .mv-chip.hit,.mv-chip.hit b{color:var(--green)}
   .mv-chip.miss{background:#FDECEE}
   .mv-chip.miss,.mv-chip.miss b{color:var(--red)}
+  table.reveal.pendonly tbody tr.played{display:none}
+  .reveal-mobile.pendonly .mv-card.played{display:none}
   .dest-star{color:#E6A700;margin-left:6px;font-size:12px}
   .played-info{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--bg-soft2);padding:3px 10px;border-radius:99px;text-transform:none;letter-spacing:0}
   .played-info b{color:var(--ink)}
@@ -517,7 +529,16 @@
       <div id="closed-state" style="display:none">
         <div id="jorClasif"></div>
         <div id="coinCallout"></div>
-        <div class="detail-h">El detalle, partido a partido &nbsp;·&nbsp; <span style="color:#E6A700">★</span> destacado de la copita <span id="playedInfo" class="played-info"></span></div>
+        <div class="detail-h">
+          <div class="dh-row">
+            <span class="dh-title">Partido a partido</span>
+            <span class="dh-star"><span style="color:#E6A700">★</span> Elige al 8</span>
+          </div>
+          <div class="dh-row dh-row2">
+            <span id="playedInfo" class="played-info"></span>
+            <button type="button" id="filterPend" class="pend-toggle" onclick="togglePend()" hidden>Partidos pendientes</button>
+          </div>
+        </div>
         <div class="reveal-wrap reveal-desktop"><table class="reveal" id="revealtbl"></table></div>
         <div class="reveal-mobile" id="revealmob"></div>
         <div class="pleno-reveal" id="plenoReveal"></div>
@@ -687,6 +708,16 @@ function showAppFor(name){
   render();
 }
 function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");if(v==="admin"&&window.ROLE==="admin"&&window.refreshAdminCount)window.refreshAdminCount();}
+function applyPendFilter(){
+  const on=!!window.PEND_ONLY;
+  const t=document.getElementById("revealtbl");
+  const m=document.getElementById("revealmob");
+  const b=document.getElementById("filterPend");
+  if(t) t.classList.toggle("pendonly", on);
+  if(m) m.classList.toggle("pendonly", on);
+  if(b) b.classList.toggle("active", on);
+}
+function togglePend(){ window.PEND_ONLY=!window.PEND_ONLY; applyPendFilter(); }
 function setRole(r){ROLE=r;document.getElementById("r-part").classList.toggle("on",r==="part");document.getElementById("r-admin").classList.toggle("on",r==="admin");document.getElementById("uname").textContent=r==="admin"?"José":"Leti I";document.getElementById("uav").textContent=r==="admin"?"J":"L";render();}
 function setState(s){STATE=s;document.getElementById("s-open").classList.toggle("on",s==="open");document.getElementById("s-closed").classList.toggle("on",s==="closed");render();}
 function setCopita(b){ISCOPITA=b;document.getElementById("c-yes").classList.toggle("on",b);document.getElementById("c-no").classList.toggle("on",!b);render();}
@@ -1230,7 +1261,8 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
   for(let i=0;i<14;i++){
     const f=partidos[i]||{local:"?",visitante:"?"};
     const res=resultados?resultados[i]:null;
-    h+=`<tr${destSet.has(i)?' class="destrow"':''}><td class="match${f.seg?' seg2':''}">${res?`<span class="res">${res}</span>`:''}${f.local} · ${f.visitante}${star(i)}</td>`;
+    const isP = res==="1"||res==="X"||res==="2";
+    h+=`<tr class="${destSet.has(i)?'destrow ':''}${isP?'played':'pend'}"><td class="match${f.seg?' seg2':''}">${res?`<span class="res">${res}</span>`:''}${f.local} · ${f.visitante}${star(i)}</td>`;
     pronos.forEach((p,pi)=>{
       const s=p.signos[i]||"·";
       const hit = res && s===res;
@@ -1253,12 +1285,20 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
     for(let i=0;i<14;i++){
       const f=partidos[i]||{local:"?",visitante:"?"};
       const res=resultados?resultados[i]:null;
-      m+=`<div class="mv-card${destSet.has(i)?' dest':''}"><div class="mv-head"><span class="mv-name${f.seg?' seg2':''}">${i+1}. ${f.local} · ${f.visitante}${star(i)}</span>${res?`<span class="mv-res">${res}</span>`:''}</div><div class="mv-chips">`;
+      const isP = res==="1"||res==="X"||res==="2";
+      m+=`<div class="mv-card${destSet.has(i)?' dest':''} ${isP?'played':'pend'}"><div class="mv-head"><span class="mv-name${f.seg?' seg2':''}">${i+1}. ${f.local} · ${f.visitante}${star(i)}</span>${res?`<span class="mv-res">${res}</span>`:''}</div><div class="mv-chips">`;
       m+= pronos.map(p=>{ const s=p.signos[i]||"·"; const hit=res&&s===res; const miss=res&&s!=="·"&&s!==res; return `<span class="mv-chip ${hit?'hit':miss?'miss':''}">${p.nombre||p.usuario} <b>${s}</b></span>`; }).join("");
       m+=`</div></div>`;
     }
     mob.innerHTML=m;
   }
+  // botón de filtro: solo tiene sentido si quedan partidos por jugar
+  const fb=document.getElementById("filterPend");
+  if(fb){
+    if(rem>0){ fb.hidden=false; }
+    else { fb.hidden=true; window.PEND_ONLY=false; }
+  }
+  if(typeof window.applyPendFilter==="function") window.applyPendFilter();
 }
 
 function renderRealClasif(rows, probs, probState){
