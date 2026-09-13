@@ -259,6 +259,7 @@
   table.reveal td.match .seg{font-size:9px;font-weight:700;color:#fff;background:var(--ink-3);padding:1px 4px;border-radius:3px;margin-left:6px}
   table.reveal td.pick{font-weight:700;color:var(--miss)}
   table.reveal td.pick.hit{color:var(--green);background:var(--green-soft)}
+  table.reveal td.pick.miss{color:var(--red);background:#FDECEE}
   table.reveal tbody tr:nth-child(even) td.match{background:var(--bg-soft)}
   table.reveal tfoot td{font-weight:800;background:var(--bg-soft2);border-top:2px solid var(--line-2)}
   table.reveal tfoot td.match{text-align:right;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
@@ -275,6 +276,8 @@
   .mv-chip b{color:var(--ink);margin-left:2px}
   .mv-chip.hit{background:var(--green-soft)}
   .mv-chip.hit,.mv-chip.hit b{color:var(--green)}
+  .mv-chip.miss{background:#FDECEE}
+  .mv-chip.miss,.mv-chip.miss b{color:var(--red)}
   .dest-star{color:#E6A700;margin-left:6px;font-size:12px}
   .played-info{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--bg-soft2);padding:3px 10px;border-radius:99px;text-transform:none;letter-spacing:0}
   .played-info b{color:var(--ink)}
@@ -512,7 +515,6 @@
       </div>
 
       <div id="closed-state" style="display:none">
-        <div class="notice lock"><span class="ic">✓</span><span>La jornada ha cerrado y se han <b>destapado los pronósticos</b>. Esta jornada la jugaron 8; los otros 4 descansaban. Abajo, quién se clasifica aplicando los criterios de desempate.</span></div>
         <div id="jorClasif"></div>
         <div id="coinCallout"></div>
         <div class="detail-h">El detalle, partido a partido &nbsp;·&nbsp; <span style="color:#E6A700">★</span> destacado de la copita <span id="playedInfo" class="played-info"></span></div>
@@ -813,13 +815,13 @@ function renderStandings(){
     <td class="r ${p.dinero?'money':'dim'}">${p.dinero?p.dinero+'€':'—'}</td>
     <td class="c cops">${p.copitas?p.copitas:'<span class="dim">0</span>'}</td>
     <td class="c num ${p.tablas?'tbp':''}">${p.tablas}</td>
-    <td class="r total num">${p.puntos}</td></tr>`).join("");
+    <td class="r total num">${p.total!=null?p.total:p.puntos}</td></tr>`).join("");
 }
 function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==="ind");document.getElementById("seg-eq").classList.toggle("on",w==="eq");document.getElementById("clasif-ind").style.display=w==="ind"?"block":"none";document.getElementById("clasif-eq").style.display=w==="eq"?"block":"none";}
 function renderTeams(){
   const G=window.GENERAL;
   if(!G || !G.teams.length){ document.getElementById("team-grid").innerHTML='<div style="color:var(--ink-2)">Sin equipos todavía.</div>'; return; }
-  document.getElementById("team-grid").innerHTML=G.teams.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="team-badge">${teamEmoji(t.nm)}</span><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span class="mem-nm">${avatarFor(m.usuario)?`<span class="avem sm">${avatarFor(m.usuario)}</span>`:''}${m.nombre}</span><span class="pp num">${m.puntos}</span></div>`).join("")}</div>`).join("");
+  document.getElementById("team-grid").innerHTML=G.teams.map((t,i)=>`<div class="team-card ${i===0?'lead':''}"><div class="th"><span class="team-badge">${teamEmoji(t.nm)}</span><span class="nm">${t.nm}</span><span class="tot num">${t.tot}</span></div>${t.mem.map(m=>`<div class="mem"><span class="mem-nm">${avatarFor(m.usuario)?`<span class="avem sm">${avatarFor(m.usuario)}</span>`:''}${m.nombre}</span><span class="pp num">${m.total!=null?m.total:m.puntos}</span></div>`).join("")}</div>`).join("");
 }
 
 const opts=arr=>arr.map(o=>`<option>${o}</option>`).join("");
@@ -1232,8 +1234,9 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
     pronos.forEach((p,pi)=>{
       const s=p.signos[i]||"·";
       const hit = res && s===res;
+      const miss = res && s!=="·" && s!==res;
       if(hit) totals[pi]++;
-      h+=`<td class="pick ${hit?'hit':''}">${s}</td>`;
+      h+=`<td class="pick ${hit?'hit':miss?'miss':''}">${s}</td>`;
     });
     h+=`</tr>`;
   }
@@ -1251,7 +1254,7 @@ function renderRealReveal(partidos, resultados, pronos, destSet){
       const f=partidos[i]||{local:"?",visitante:"?"};
       const res=resultados?resultados[i]:null;
       m+=`<div class="mv-card${destSet.has(i)?' dest':''}"><div class="mv-head"><span class="mv-name${f.seg?' seg2':''}">${i+1}. ${f.local} · ${f.visitante}${star(i)}</span>${res?`<span class="mv-res">${res}</span>`:''}</div><div class="mv-chips">`;
-      m+= pronos.map(p=>{ const s=p.signos[i]||"·"; const hit=res&&s===res; return `<span class="mv-chip ${hit?'hit':''}">${p.nombre||p.usuario} <b>${s}</b></span>`; }).join("");
+      m+= pronos.map(p=>{ const s=p.signos[i]||"·"; const hit=res&&s===res; const miss=res&&s!=="·"&&s!==res; return `<span class="mv-chip ${hit?'hit':miss?'miss':''}">${p.nombre||p.usuario} <b>${s}</b></span>`; }).join("");
       m+=`</div></div>`;
     }
     mob.innerHTML=m;
@@ -1290,10 +1293,8 @@ function renderRealClasif(rows, probs, probState){
       <td class="pts num">${p.pts}</td>
       <td class="stcell">${st?`<span class="st ${cls}">${st}</span>`:''}</td>${probCell}</tr>`;
   });
-  const legend = showProb ? ' · <span style="color:var(--green)">% opciones de clasificarse</span>' : (showFew ? ' · las opciones aparecen con 8 resultados' : '');
   document.getElementById("jorClasif").innerHTML=
-    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la jornada</span>
-      <span class="sub">${n} jugaron${showRotation?' · 4 se clasifican · 4 se eliminan':''}${legend}</span></div>
+    `<div class="jcl"><div class="jh"><span class="t">Clasificación de la jornada</span></div>
       <table><tbody>${body}</tbody></table></div>`;
 }
 
@@ -1997,10 +1998,11 @@ async function loadGeneral(){
       }
     });
   }
-  const rows=Object.values(acc).sort((a,b)=> b.puntos-a.puntos || b.dinero-a.dinero || b.copitas-a.copitas || b.tablas-a.tablas || a.nombre.localeCompare(b.nombre));
+  for(const k in acc){ acc[k].total = (acc[k].puntos||0) + (acc[k].tablas||0); }
+  const rows=Object.values(acc).sort((a,b)=> b.total-a.total || b.dinero-a.dinero || b.copitas-a.copitas || b.tablas-a.tablas || a.nombre.localeCompare(b.nombre));
   const tm={};
   rows.forEach(r=>{ const t=r.equipo||"—"; (tm[t]=tm[t]||[]).push(r); });
-  const teams=Object.keys(tm).map(t=>({nm:t, tot:tm[t].reduce((a,r)=>a+r.puntos,0), mem:tm[t]})).sort((a,b)=>b.tot-a.tot);
+  const teams=Object.keys(tm).map(t=>({nm:t, tot:tm[t].reduce((a,r)=>a+(r.total||0),0), mem:tm[t]})).sort((a,b)=>b.tot-a.tot);
   window.GENERAL={rows,teams};
   renderStandings(); renderTeams();
 }
