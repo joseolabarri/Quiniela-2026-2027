@@ -290,6 +290,35 @@
   .mv-chip.miss,.mv-chip.miss b{color:var(--red)}
   table.reveal.pendonly tbody tr.played{display:none}
   .reveal-mobile.pendonly .mv-card.played{display:none}
+  tr.stdrow{cursor:pointer;transition:background .12s}
+  tr.stdrow:hover{background:var(--bg-soft2)}
+  tr.stdrow td.who .who-nm::after{content:"›";margin-left:7px;color:var(--ink-3);font-weight:700}
+  .bd-modal{position:fixed;inset:0;z-index:120;background:rgba(15,17,21,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
+  .bd-modal[hidden]{display:none}
+  .bd-card{position:relative;width:100%;max-width:420px;max-height:86vh;overflow:auto;background:#fff;border-radius:var(--radius);box-shadow:0 30px 70px -20px rgba(0,0,0,.5);padding:20px}
+  .bd-close{position:absolute;top:12px;right:12px;width:32px;height:32px;border:none;border-radius:50%;background:var(--bg-soft2);color:var(--ink-2);font-size:15px;cursor:pointer;display:grid;place-items:center}
+  .bd-close:hover{background:var(--line-2)}
+  .bd-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-right:34px}
+  .bd-head .avem{width:42px;height:42px;font-size:22px;border-radius:12px}
+  .bd-name{font-family:var(--display);font-weight:700;font-size:19px;color:var(--ink)}
+  .bd-eq{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+  .bd-sum{display:flex;gap:8px;margin-bottom:16px}
+  .bd-sum-i{flex:1;background:var(--bg-soft2);border-radius:12px;padding:10px 8px;text-align:center}
+  .bd-sum-n{display:block;font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink)}
+  .bd-sum-l{display:block;font-size:10.5px;color:var(--ink-2);margin-top:2px}
+  .bd-list{display:flex;flex-direction:column;gap:2px}
+  .bd-row{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px}
+  .bd-row:nth-child(odd){background:var(--bg-soft)}
+  .bd-j{font-weight:600;font-size:14px;color:var(--ink)}
+  .bd-mid{flex:1;display:flex;justify-content:flex-end}
+  .bd-row.rest .bd-j{color:var(--ink-2)}
+  .bd-tag{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg-soft2);color:var(--ink-2)}
+  .bd-tag.cop{background:var(--grad);color:#fff}
+  .bd-tag.olv{background:#FDECEE;color:var(--red)}
+  .bd-row.rest{justify-content:space-between}
+  .bd-pts{font-family:var(--display);font-weight:700;font-size:17px;color:var(--ink);min-width:26px;text-align:right}
+  .bd-pts.best{color:var(--green)}
+  .bd-empty{padding:18px;text-align:center;color:var(--ink-2);font-size:13.5px}
   .dest-star{color:#E6A700;margin-left:6px;font-size:12px}
   .played-info{display:inline-flex;align-items:center;gap:6px;margin-left:10px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--bg-soft2);padding:3px 10px;border-radius:99px;text-transform:none;letter-spacing:0}
   .played-info b{color:var(--ink)}
@@ -840,7 +869,7 @@ function renderStandings(){
   const G=window.GENERAL;
   if(!G){ document.getElementById("std-body").innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--ink-2)">Cargando…</td></tr>'; return; }
   if(!G.rows.length){ document.getElementById("std-body").innerHTML='<tr><td colspan="6" style="padding:16px;color:var(--ink-2)">Aún no hay participantes dados de alta.</td></tr>'; return; }
-  document.getElementById("std-body").innerHTML=G.rows.map((p,i)=>`<tr class="${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+  document.getElementById("std-body").innerHTML=G.rows.map((p,i)=>`<tr class="stdrow ${i===0?'top1':i===1?'top2':i===2?'top3':''}" onclick="showBreakdown('${p.usuario}')" title="Ver puntos por jornada">
     <td class="pos num">${i+1}</td>
     <td class="who">${avatarFor(p.usuario)?`<span class="avem">${avatarFor(p.usuario)}</span>`:''}<span class="who-nm">${p.nombre}${p.equipo?`<span class="eq">${p.equipo}</span>`:''}</span></td>
     <td class="r ${p.dinero?'money':'dim'}">${p.dinero?p.dinero+'€':'—'}</td>
@@ -848,6 +877,36 @@ function renderStandings(){
     <td class="c num ${p.tablas?'tbp':''}">${p.tablas}</td>
     <td class="r total num">${p.total!=null?p.total:p.puntos}</td></tr>`).join("");
 }
+function showBreakdown(usuario){
+  const G=window.GENERAL; if(!G) return;
+  const p=G.rows.find(r=>r.usuario===usuario); if(!p) return;
+  const av=(typeof avatarFor==="function"&&avatarFor(p.usuario))?avatarFor(p.usuario):"";
+  const pj=(p.porJornada||[]).slice().sort((a,b)=>a.n-b.n);
+  const jugadas=pj.filter(x=>!x.descanso);
+  const sumJ=jugadas.reduce((a,x)=>a+(x.pts||0),0);
+  const mejor=jugadas.reduce((m,x)=>(x.pts>m?x.pts:m),0);
+  let rows;
+  if(!pj.length){
+    rows='<div class="bd-empty">Todavía no hay jornadas con resultados.</div>';
+  }else{
+    rows=pj.map(x=>{
+      if(x.descanso) return `<div class="bd-row rest"><span class="bd-j">Jornada ${x.n}</span><span class="bd-tag">Descansó</span></div>`;
+      const tag = x.olvido ? '<span class="bd-tag olv">Olvido</span>' : (x.copita ? '<span class="bd-tag cop">🏆 Copita</span>' : '');
+      const best = (x.pts===mejor && mejor>0) ? ' best' : '';
+      return `<div class="bd-row"><span class="bd-j">Jornada ${x.n}</span><span class="bd-mid">${tag}</span><span class="bd-pts${best}">${x.pts}</span></div>`;
+    }).join("");
+  }
+  document.getElementById("bdBody").innerHTML=`
+    <div class="bd-head">${av?`<span class="avem">${av}</span>`:''}<div><div class="bd-name">${p.nombre}</div>${p.equipo?`<div class="bd-eq">${p.equipo}</div>`:''}</div></div>
+    <div class="bd-sum">
+      <div class="bd-sum-i"><span class="bd-sum-n">${sumJ}</span><span class="bd-sum-l">pts de jornadas</span></div>
+      <div class="bd-sum-i"><span class="bd-sum-n">${p.tablas||0}</span><span class="bd-sum-l">pts de tablas</span></div>
+      <div class="bd-sum-i"><span class="bd-sum-n">${p.total!=null?p.total:p.puntos}</span><span class="bd-sum-l">total</span></div>
+    </div>
+    <div class="bd-list">${rows}</div>`;
+  const md=document.getElementById("bdModal"); md.hidden=false; document.body.style.overflow="hidden";
+}
+function closeBreakdown(){ const md=document.getElementById("bdModal"); if(md) md.hidden=true; document.body.style.overflow=""; }
 function segView(w){document.getElementById("seg-ind").classList.toggle("on",w==="ind");document.getElementById("seg-eq").classList.toggle("on",w==="eq");document.getElementById("clasif-ind").style.display=w==="ind"?"block":"none";document.getElementById("clasif-eq").style.display=w==="eq"?"block":"none";}
 function renderTeams(){
   const G=window.GENERAL;
@@ -1965,7 +2024,7 @@ async function loadGeneral(){
   const acc={};
   try{
     const ps=await getDocs(collection(db,"participantes"));
-    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:0}; });
+    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:0,porJornada:[]}; });
   }catch(e){}
   const uidToUser={}; Object.values(acc).forEach(a=>{ uidToUser[a.uid]=a.usuario; });
   let jornadas=[];
@@ -2003,11 +2062,21 @@ async function loadGeneral(){
     });
     scored.forEach(s=>{ if(acc[s.usuario]) acc[s.usuario].puntos+=s.pts; });
     const elegibles=scored.filter(s=>!s.olvido);
+    let winner=null;
     if(elegibles.length){
       elegibles.sort((a,b)=> b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
       applyCoin(elegibles, data.moneda);
-      const w=elegibles[0].usuario;
-      if(acc[w]) acc[w].copitas+=1;
+      winner=elegibles[0].usuario;
+      if(acc[winner]) acc[winner].copitas+=1;
+    }
+    // desglose por jornada, para cada participante
+    const numero = data.numero || parseInt(j.id.replace("j",""),10) || 0;
+    const rosterU = new Set((Array.isArray(data.juegan)?data.juegan:[]).map(uid=>uidToUser[uid]).filter(Boolean));
+    const scoredMap={}; scored.forEach(s=>{ scoredMap[s.usuario]=s; });
+    for(const u in acc){
+      const s=scoredMap[u];
+      if(s){ acc[u].porJornada.push({n:numero, pts:s.pts, olvido:!!s.olvido, copita:(u===winner)}); }
+      else if(rosterU.size && !rosterU.has(u)){ acc[u].porJornada.push({n:numero, descanso:true}); }
     }
   }
   // ── puntos de las Tablas (si ya hay resultados reales) ──
@@ -2062,5 +2131,11 @@ onAuthStateChanged(auth, (u)=>{
   }
 });
 </script>
+<div id="bdModal" class="bd-modal" hidden onclick="if(event.target===this)closeBreakdown()">
+  <div class="bd-card">
+    <button class="bd-close" onclick="closeBreakdown()" aria-label="Cerrar">✕</button>
+    <div id="bdBody"></div>
+  </div>
+</div>
 </body>
 </html>
