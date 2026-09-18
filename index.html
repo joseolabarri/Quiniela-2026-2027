@@ -292,6 +292,16 @@
   .reveal-mobile.pendonly .mv-card.played{display:none}
   tr.stdrow{cursor:pointer;transition:background .12s}
   tr.stdrow:hover{background:var(--bg-soft2)}
+  .sum-banner{margin:0 0 16px}
+  .sum-banner[hidden]{display:none}
+  .sum-inner{position:relative;background:linear-gradient(135deg,#E01E37,#B01228);color:#fff;border-radius:var(--radius);padding:16px 44px 16px 18px;box-shadow:0 16px 34px -18px rgba(224,30,55,.7)}
+  .sum-inner + .sum-inner{margin-top:10px}
+  .sum-inner.tb{background:linear-gradient(135deg,#1F2430,#12151C);box-shadow:0 16px 34px -18px rgba(0,0,0,.6)}
+  .sum-title{font-family:var(--display);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.9;margin-bottom:6px}
+  .sum-text{font-size:14px;line-height:1.5}
+  .sum-text b{font-weight:700}
+  .sum-close{position:absolute;top:10px;right:10px;width:28px;height:28px;border:none;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:13px;cursor:pointer;display:grid;place-items:center}
+  .sum-close:hover{background:rgba(255,255,255,.3)}
   tr.stdrow td.who .who-nm::after{content:"›";margin-left:7px;color:var(--ink-3);font-weight:700}
   .bd-modal{position:fixed;inset:0;z-index:120;background:rgba(15,17,21,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px}
   .bd-modal[hidden]{display:none}
@@ -542,6 +552,7 @@
   </nav>
 
   <main>
+    <div id="summaryBanner" class="sum-banner" hidden></div>
     <section class="view active" id="v-jornada">
       <div class="section-head">
         <div><div class="eyebrow" id="jor-eyebrow">Jornada —</div><h2>Tus pronósticos</h2></div>
@@ -736,7 +747,7 @@ function showAppFor(name){
   go("jornada");
   render();
 }
-function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");if(v==="admin"&&window.ROLE==="admin"&&window.refreshAdminCount)window.refreshAdminCount();}
+function go(v){document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.v===v));document.querySelectorAll(".view").forEach(s=>s.classList.remove("active"));document.getElementById("v-"+v).classList.add("active");if(v==="admin"&&window.ROLE==="admin"&&window.refreshAdminCount)window.refreshAdminCount();if(v==="clasif"&&window.loadGeneral)window.loadGeneral();}
 function applyPendFilter(){
   const on=!!window.PEND_ONLY;
   const t=document.getElementById("revealtbl");
@@ -747,6 +758,42 @@ function applyPendFilter(){
   if(b) b.classList.toggle("active", on);
 }
 function togglePend(){ window.PEND_ONLY=!window.PEND_ONLY; applyPendFilter(); }
+function showSummaryBanner(){
+  const el=document.getElementById("summaryBanner"); if(!el) return;
+  let html="";
+  // 1) resumen de la jornada
+  const s=window.SUMMARY;
+  if(s && s.text){
+    let dismissed=false; try{ dismissed = localStorage.getItem("qsum_j"+s.n)==="1"; }catch(_){}
+    if(!dismissed) html+=`<div class="sum-inner">
+      <button class="sum-close" onclick="dismissSummary()" aria-label="Cerrar">✕</button>
+      <div class="sum-title">Resumen · Jornada ${s.n}</div>
+      <div class="sum-text">${s.text}</div></div>`;
+  }
+  // 2) aviso de cambio en las tablas
+  const sig=window.TBSIG||"";
+  if(sig){
+    let last=null; try{ last=localStorage.getItem("qtbsig"); }catch(_){}
+    if(last===null){ try{ localStorage.setItem("qtbsig", sig); }catch(_){} } // primera vez: guardar sin avisar
+    else if(last!==sig){
+      html+=`<div class="sum-inner tb">
+        <button class="sum-close" onclick="dismissTablas()" aria-label="Cerrar">✕</button>
+        <div class="sum-title">Tablas actualizadas</div>
+        <div class="sum-text">📋 Se han actualizado los puntos de las tablas de pretemporada. Míralo en la clasificación general.</div></div>`;
+    }
+  }
+  if(html){ el.innerHTML=html; el.hidden=false; } else { el.innerHTML=""; el.hidden=true; }
+}
+function dismissSummary(){
+  const s=window.SUMMARY;
+  try{ if(s&&s.n) localStorage.setItem("qsum_j"+s.n,"1"); }catch(_){}
+  showSummaryBanner();
+}
+function dismissTablas(){
+  try{ if(window.TBSIG) localStorage.setItem("qtbsig", window.TBSIG); }catch(_){}
+  showSummaryBanner();
+}
+window.showSummaryBanner=showSummaryBanner;
 function setRole(r){ROLE=r;document.getElementById("r-part").classList.toggle("on",r==="part");document.getElementById("r-admin").classList.toggle("on",r==="admin");document.getElementById("uname").textContent=r==="admin"?"José":"Leti I";document.getElementById("uav").textContent=r==="admin"?"J":"L";render();}
 function setState(s){STATE=s;document.getElementById("s-open").classList.toggle("on",s==="open");document.getElementById("s-closed").classList.toggle("on",s==="closed");render();}
 function setCopita(b){ISCOPITA=b;document.getElementById("c-yes").classList.toggle("on",b);document.getElementById("c-no").classList.toggle("on",!b);render();}
@@ -2028,6 +2075,7 @@ async function loadGeneral(){
   }catch(e){}
   const uidToUser={}; Object.values(acc).forEach(a=>{ uidToUser[a.uid]=a.usuario; });
   let jornadas=[];
+  const jEvents=[];
   try{ const js=await getDocs(collection(db,"jornadas")); js.forEach(d=>jornadas.push({id:d.id,data:d.data()})); }catch(e){}
   for(const j of jornadas){
     const data=j.data;
@@ -2078,10 +2126,25 @@ async function loadGeneral(){
       if(s){ acc[u].porJornada.push({n:numero, pts:s.pts, olvido:!!s.olvido, copita:(u===winner)}); }
       else if(rosterU.size && !rosterU.has(u)){ acc[u].porJornada.push({n:numero, descanso:true}); }
     }
+    // eventos de la jornada, para el resumen
+    const plr=data.plenoResultado;
+    const allRes=resultados.every(r=>r==="1"||r==="X"||r==="2");
+    const hasPleno=plr && plr.local!=="" && plr.local!=null && plr.visitante!=="" && plr.visitante!=null;
+    const allSorted=scored.slice().sort((a,b)=> (a.olvido?1:0)-(b.olvido?1:0) || b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+    applyCoin(allSorted, data.moneda);
+    const nAll=allSorted.length;
+    const elim=(nAll>4?allSorted.slice(nAll-4):allSorted).map(s=>s.usuario);
+    let plenoHit=false;
+    if(data.copita && plr){
+      const cp=pron.find(p=>p.usuario===data.copita);
+      if(cp && cp.plenoPronostico && Number(cp.plenoPronostico.local)===Number(plr.local) && Number(cp.plenoPronostico.visitante)===Number(plr.visitante)) plenoHit=true;
+    }
+    jEvents.push({ n:numero, complete: allRes && hasPleno, winner, copitaUser:data.copita||"", plenoHit, elim });
   }
   // ── puntos de las Tablas (si ya hay resultados reales) ──
   let realTb=null;
   try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) realTb=rt.data(); }catch(e){}
+  window.TBSIG = realTb ? JSON.stringify(realTb) : "";
   if(realTb){
     // 1) cargar las tablas de todos
     const tbOf={};
@@ -2113,7 +2176,94 @@ async function loadGeneral(){
   rows.forEach(r=>{ const t=r.equipo||"—"; (tm[t]=tm[t]||[]).push(r); });
   const teams=Object.keys(tm).map(t=>({nm:t, tot:tm[t].reduce((a,r)=>a+(r.total||0),0), mem:tm[t]})).sort((a,b)=>b.tot-a.tot);
   window.GENERAL={rows,teams};
+  window.SUMMARY = composeSummary(rows, acc, jEvents, teams);
   renderStandings(); renderTeams();
+  if(typeof window.showSummaryBanner==="function") window.showSummaryBanner();
+}
+window.loadGeneral = loadGeneral;
+
+// Compone un resumen breve de la última jornada completa comparando la general antes/después.
+function composeSummary(rows, acc, jEvents, teams){
+  const done=(jEvents||[]).filter(e=>e.complete);
+  if(!done.length) return null;
+  const ev=done.reduce((a,b)=> b.n>a.n?b:a);
+  const N=ev.n;
+  const hasPrev=done.some(e=>e.n<N);
+  const nombreOf=u=>(acc[u]&&acc[u].nombre)||u;
+  const totalOf=u=>(acc[u]&&acc[u].total)||0;
+  const ptsN={}; for(const u in acc){ const e=(acc[u].porJornada||[]).find(x=>x.n===N && !x.descanso); ptsN[u]= e?(e.pts||0):0; }
+  const rankAfter=rows.map(r=>r.usuario);
+  const beforeTotal=u=> ((totalOf(u))-(ptsN[u]||0));
+  // standings antes de esta jornada
+  const before=Object.values(acc).map(a=>({
+    usuario:a.usuario,
+    total:beforeTotal(a.usuario),
+    dinero:a.dinero||0,
+    copitas:(a.copitas||0)-(((a.porJornada||[]).some(x=>x.n===N&&x.copita))?1:0),
+    tablas:a.tablas||0, nombre:a.nombre
+  })).sort((x,y)=> y.total-x.total || y.dinero-x.dinero || y.copitas-x.copitas || y.tablas-x.tablas || x.nombre.localeCompare(y.nombre));
+  const posBefore={}; before.forEach((b,i)=>posBefore[b.usuario]=i+1);
+  const leaderBefore=before.length?before[0].usuario:null;
+  const leaderAfter=rankAfter.length?rankAfter[0]:null;
+  const pl=n=>n===1?'punto':'puntos';
+  const S=[];
+  // 1) ganador + pleno
+  if(ev.winner){
+    let s=`🏆 <b>${nombreOf(ev.winner)}</b> gana la jornada ${N}`;
+    if(N>1 && ev.copitaUser && ev.plenoHit) s+=`, y la copita <b>${nombreOf(ev.copitaUser)}</b> acertó el Pleno al 15 (+4 y se salva).`;
+    else s+=`.`;
+    S.push(s);
+  }
+  if(hasPrev){
+    // 2) líder eliminado
+    if(leaderBefore && ev.elim.includes(leaderBefore)) S.push(`😱 ¡El líder de la general, <b>${nombreOf(leaderBefore)}</b>, se ha eliminado esta jornada!`);
+    // 3) liderato / distancia con el segundo (en puntos, en ambos sentidos)
+    if(leaderBefore && leaderAfter && leaderBefore!==leaderAfter){
+      const g = rankAfter.length>1 ? totalOf(leaderAfter)-totalOf(rankAfter[1]) : 0;
+      S.push(`👑 <b>${nombreOf(leaderAfter)}</b> es el nuevo líder de la general, superando a ${nombreOf(leaderBefore)}${rankAfter.length>1?` (con ${g} de ventaja ahora)`:``}.`);
+    }else if(leaderAfter && rankAfter.length>1){
+      const second=rankAfter[1];
+      const gapAfter=totalOf(leaderAfter)-totalOf(second);
+      const gapBefore=beforeTotal(leaderAfter)-beforeTotal(second);
+      const diff=gapAfter-gapBefore;
+      if(diff>0) S.push(`📈 <b>${nombreOf(leaderAfter)}</b> amplía su ventaja como líder en ${diff} ${pl(diff)} (ahora ${gapAfter} sobre <b>${nombreOf(second)}</b>).`);
+      else if(diff<0) S.push(`📉 <b>${nombreOf(second)}</b> recorta ${-diff} ${pl(-diff)} al líder <b>${nombreOf(leaderAfter)}</b> (queda a ${gapAfter}).`);
+      else S.push(`La cabeza no se mueve: <b>${nombreOf(leaderAfter)}</b> sigue con ${gapAfter} sobre <b>${nombreOf(second)}</b>.`);
+    }
+    // 4) ¿puede el segundo dar la vuelta la próxima jornada?
+    if(leaderAfter && rankAfter.length>1){
+      const second=rankAfter[1];
+      const gap=totalOf(leaderAfter)-totalOf(second);
+      const secondPlaysNext=!ev.elim.includes(second);
+      const maxGain=(second===ev.winner)?18:14;
+      if(secondPlaysNext && gap>0 && gap<=maxGain) S.push(`⚔️ <b>${nombreOf(second)}</b> está a ${gap} y podría dar la vuelta al líder en la próxima jornada.`);
+    }
+    // 5) adelantamientos: todos los que suben de puesto (menos el líder, ya cubierto arriba)
+    const climbers=[];
+    before.forEach((b,idx)=>{ const from=idx+1; const to=rankAfter.indexOf(b.usuario)+1; if(to>0 && to<from && b.usuario!==leaderAfter) climbers.push({u:b.usuario,from,to}); });
+    climbers.sort((a,b)=>a.to-b.to);
+    if(climbers.length) S.push(`⬆️ Suben puestos: ${climbers.map(c=>`<b>${nombreOf(c.u)}</b> (${c.from}º→${c.to}º)`).join(", ")}.`);
+  }
+  // 6) equipos: cambio de líder o distancia con el segundo (en puntos, ambos sentidos)
+  if(teams && teams.length){
+    if(hasPrev && teams.length>1){
+      const tBefore={}; teams.forEach(t=>{ tBefore[t.nm]=t.mem.reduce((a,m)=>a+beforeTotal(m.usuario),0); });
+      const beforeTeams=teams.map(t=>({nm:t.nm,tot:tBefore[t.nm]})).sort((a,b)=>b.tot-a.tot);
+      if(beforeTeams[0].nm!==teams[0].nm){
+        S.push(`🛡️ Nuevo líder por equipos: <b>${teams[0].nm}</b> adelanta a ${beforeTeams[0].nm}.`);
+      }else{
+        const gA=teams[0].tot-teams[1].tot;
+        const gB=tBefore[teams[0].nm]-tBefore[teams[1].nm];
+        const d=gA-gB;
+        if(d>0) S.push(`🛡️ Por equipos, <b>${teams[0].nm}</b> amplía su ventaja en ${d} ${pl(d)} (a ${gA} de ${teams[1].nm}).`);
+        else if(d<0) S.push(`🛡️ Por equipos, <b>${teams[1].nm}</b> recorta ${-d} ${pl(-d)} a <b>${teams[0].nm}</b> (a ${gA}).`);
+        else S.push(`🛡️ Por equipos sigue mandando <b>${teams[0].nm}</b> (a ${gA} de ${teams[1].nm}).`);
+      }
+    }else{
+      S.push(`🛡️ Por equipos manda <b>${teams[0].nm}</b>.`);
+    }
+  }
+  return { n:N, text:S.slice(0,7).join(" ") };
 }
 
 onAuthStateChanged(auth, (u)=>{
