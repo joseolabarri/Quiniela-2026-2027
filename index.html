@@ -206,6 +206,10 @@
   .pleno-row .tm.away{text-align:left}.pleno-row .tm.home{text-align:right}
   .roller{width:60px;height:64px;border:1.5px solid #3A3C45;border-radius:13px;background:#15161B;font-family:var(--display);font-weight:700;font-size:26px;color:#fff;text-align:center;transition:border-color .15s,box-shadow .15s}
   .roller:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(224,30,55,.25)}
+  select.rsel{-webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;cursor:pointer;padding:0 4px}
+  select.rsel option{background:#15161B;color:#fff;font-size:16px}
+  .admin-sel{width:100%;padding:11px 12px;border:1.5px solid var(--line-2);border-radius:9px;font-family:inherit;font-size:15px;background:var(--bg);color:var(--ink);cursor:pointer}
+  .admin-sel:focus{outline:none;border-color:var(--red)}
   .pleno-row .x{color:#6a6e78;font-weight:700;font-size:18px}
 
   /* JORNADA CLASIFICACIÓN (cerrada) */
@@ -836,7 +840,7 @@ function renderCopita(){const el=document.getElementById("copita-block");
 function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
   const PL=window.PLENO||PLENO;
   el.innerHTML=`<div class="pleno"><div class="ph"><span class="cup">🏆</span><span class="tt"><span class="t">Pleno al 15</span><span class="v">Resultado exacto · 4 puntos · partido fijado por Loterías</span></span></div>
-    <div class="pleno-row"><span class="tm home">${PL.home}</span><input class="roller num" type="text" value="1" maxlength="2"><span class="x">–</span><input class="roller num" type="text" value="1" maxlength="2"><span class="tm away">${PL.away}</span></div></div>`;
+    <div class="pleno-row"><span class="tm home">${PL.home}</span><select class="roller rsel num"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="M">M</option></select><span class="x">–</span><select class="roller rsel num"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="M">M</option></select><span class="tm away">${PL.away}</span></div></div>`;
 }
 
 /* -------- clasificación de la jornada con desempates -------- */
@@ -1231,7 +1235,7 @@ async function showClosed(data){
       let p=pronos.find(x=>x.usuario===u);
       if(!p){ p={usuario:u, nombre:nombreDe[u]||u, signos:[], plenoPronostico:null, destacados:[]}; pronos.push(p); }
       p.signos=OLV.slice();
-      p.plenoPronostico=(u===copita)?{local:0,visitante:0}:null;
+      p.plenoPronostico=(u===copita)?{local:"0",visitante:"0"}:null;
       p.olvido=true;
     });
   }
@@ -1252,7 +1256,7 @@ async function showClosed(data){
   const cop=pronos.find(p=>p.usuario===copita);
   if(cop && cop.plenoPronostico){
     const hasReal = plenoReal && plenoReal.local!=="" && plenoReal.local!=null && plenoReal.visitante!=="" && plenoReal.visitante!=null;
-    const ok = hasReal && Number(cop.plenoPronostico.local)===Number(plenoReal.local) && Number(cop.plenoPronostico.visitante)===Number(plenoReal.visitante);
+    const ok = hasReal && String(cop.plenoPronostico.local)===String(plenoReal.local) && String(cop.plenoPronostico.visitante)===String(plenoReal.visitante);
     const pl = data.pleno || {};
     const home = pl.local || "Local", away = pl.visitante || "Visitante";
     const out = !hasReal ? 'Pendiente' : (ok ? 'Acertado' : 'Fallado');
@@ -1290,7 +1294,7 @@ async function showClosed(data){
     const isCop=p.usuario===copita;
     let plenoHit=false;
     if(isCop && plenoReal && p.plenoPronostico){
-      plenoHit = (Number(p.plenoPronostico.local)===Number(plenoReal.local) && Number(p.plenoPronostico.visitante)===Number(plenoReal.visitante));
+      plenoHit = (String(p.plenoPronostico.local)===String(plenoReal.local) && String(p.plenoPronostico.visitante)===String(plenoReal.visitante));
       if(plenoHit) pts+=4;
     }
     if(p.olvido) pts=Math.floor(pts/2);
@@ -1457,7 +1461,7 @@ document.addEventListener("click", async (e)=>{
   const payload = { signos: signos, usuario: window.MYUSER||"", actualizado: serverTimestamp() };
   if(window.ISCOPITA){
     const rs=document.querySelectorAll("#pleno-block .roller");
-    if(rs.length===2){ payload.plenoPronostico = { local: Number(rs[0].value)||0, visitante: Number(rs[1].value)||0 }; }
+    if(rs.length===2){ payload.plenoPronostico = { local: rs[0].value, visitante: rs[1].value }; }
     payload.destacados = [...(window.myStars||[])];
   }
   saveBtn.disabled=true; saveBtn.textContent="Guardando…";
@@ -1488,8 +1492,13 @@ function toLocalInput(d){
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
 }
 
-async function entregasCardHtml(){
-  let parts=[];
+function plenoOptions(v){ const cur=(v==null?"":String(v)); return ["","0","1","2","M"].map(o=>`<option value="${o}"${cur===o?" selected":""}>${o||"–"}</option>`).join(""); }
+function stableStringify(o){
+  if(o===null||typeof o!=="object") return JSON.stringify(o);
+  if(Array.isArray(o)) return "["+o.map(stableStringify).join(",")+"]";
+  return "{"+Object.keys(o).sort().map(k=>JSON.stringify(k)+":"+stableStringify(o[k])).join(",")+"}";
+}
+async function entregasCardHtml(){  let parts=[];
   try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario});}); }catch(e){}
   try{
     const actJid = ACTIVE_JID || ADMIN_JID;
@@ -1600,8 +1609,8 @@ async function buildAdmin(){
       <div class="hint" style="margin:0 0 12px">Tras jugarse los partidos, marca el resultado real de cada uno y del Pleno, y guarda. Con esto se calcula la clasificación de la jornada cerrada.</div>
       ${resRows}
       <div class="row2" style="margin-top:12px">
-        <div><label class="fl">Pleno real · local</label><input type="text" id="ax-plr-local" value="${esc(plenoR.local)}"></div>
-        <div><label class="fl">Pleno real · visitante</label><input type="text" id="ax-plr-visit" value="${esc(plenoR.visitante)}"></div>
+        <div><label class="fl">Pleno real · local</label><select id="ax-plr-local" class="admin-sel">${plenoOptions(plenoR.local)}</select></div>
+        <div><label class="fl">Pleno real · visitante</label><select id="ax-plr-visit" class="admin-sel">${plenoOptions(plenoR.visitante)}</select></div>
       </div>
       <div class="hint" style="margin:14px 0 0">Los <b>olvidos</b> se detectan solos al cerrar el plazo: a quien debía jugar y no dejó pronóstico se le aplica automáticamente la quiniela por defecto, la mitad de puntos y la eliminación.</div>
       <div style="margin-top:14px"><button class="pub" id="ax-save-res">Guardar resultados</button></div>
@@ -1866,15 +1875,15 @@ async function autoCopitaYJuegan(numero){
   let pron=[];
   try{ const qs=await getDocs(collection(db,"jornadas",prevJid,"pronosticos")); qs.forEach(d=>{const x=d.data(); const u=x.usuario||uidToUser[d.id]; if(u && valid.has(u)) pron.push({usuario:u, signos:Array.isArray(x.signos)?x.signos:[], plenoPronostico:x.plenoPronostico||null});}); }catch(e){}
   const submitted=new Set(pron.map(p=>p.usuario));
-  (Array.isArray(prev.juegan)?prev.juegan:[]).forEach(uid=>{ const u=uidToUser[uid]; if(u && valid.has(u) && !submitted.has(u)) pron.push({usuario:u, signos:OLV.slice(), plenoPronostico:(u===prev.copita?{local:0,visitante:0}:null), olvido:true}); });
-  (Array.isArray(prev.olvidos)?prev.olvidos:[]).forEach(u=>{ const p=pron.find(x=>x.usuario===u); if(p){ p.signos=OLV.slice(); p.plenoPronostico=(u===prev.copita?{local:0,visitante:0}:null); p.olvido=true; } });
+  (Array.isArray(prev.juegan)?prev.juegan:[]).forEach(uid=>{ const u=uidToUser[uid]; if(u && valid.has(u) && !submitted.has(u)) pron.push({usuario:u, signos:OLV.slice(), plenoPronostico:(u===prev.copita?{local:"0",visitante:"0"}:null), olvido:true}); });
+  (Array.isArray(prev.olvidos)?prev.olvidos:[]).forEach(u=>{ const p=pron.find(x=>x.usuario===u); if(p){ p.signos=OLV.slice(); p.plenoPronostico=(u===prev.copita?{local:"0",visitante:"0"}:null); p.olvido=true; } });
   if(!pron.length) return { copita:"", juegan:allUids, warn:"no-pron" };
   const rows=pron.map(p=>{
     const sc=scoreSignos(p.signos,resultados,partidos);
     let pts=sc.pts;
     if(p.usuario===prev.copita && prev.plenoResultado && p.plenoPronostico
-       && Number(p.plenoPronostico.local)===Number(prev.plenoResultado.local)
-       && Number(p.plenoPronostico.visitante)===Number(prev.plenoResultado.visitante)) pts+=4;
+       && String(p.plenoPronostico.local)===String(prev.plenoResultado.local)
+       && String(p.plenoPronostico.visitante)===String(prev.plenoResultado.visitante)) pts+=4;
     if(p.olvido) pts=Math.floor(pts/2);
     return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw, olvido:!!p.olvido};
   });
@@ -2098,15 +2107,15 @@ async function loadGeneral(){
       let p=pron.find(x=>x.usuario===u);
       if(!p){ p={usuario:u, signos:[], plenoPronostico:null}; pron.push(p); }
       p.signos=OLV.slice();
-      p.plenoPronostico=(u===data.copita)?{local:0,visitante:0}:null;
+      p.plenoPronostico=(u===data.copita)?{local:"0",visitante:"0"}:null;
       p.olvido=true;
     });
     const scored=pron.map(p=>{
       const sc=scoreSignos(p.signos,resultados,partidos);
       let pts=sc.pts;
       if(p.usuario===data.copita && data.plenoResultado && p.plenoPronostico
-         && Number(p.plenoPronostico.local)===Number(data.plenoResultado.local)
-         && Number(p.plenoPronostico.visitante)===Number(data.plenoResultado.visitante)) pts+=4;
+         && String(p.plenoPronostico.local)===String(data.plenoResultado.local)
+         && String(p.plenoPronostico.visitante)===String(data.plenoResultado.visitante)) pts+=4;
       if(p.olvido) pts=Math.floor(pts/2);
       return {usuario:p.usuario, pts, seg2:sc.seg2, away:sc.away, draw:sc.draw, olvido:!!p.olvido};
     });
@@ -2139,14 +2148,14 @@ async function loadGeneral(){
     let plenoHit=false;
     if(data.copita && plr){
       const cp=pron.find(p=>p.usuario===data.copita);
-      if(cp && cp.plenoPronostico && Number(cp.plenoPronostico.local)===Number(plr.local) && Number(cp.plenoPronostico.visitante)===Number(plr.visitante)) plenoHit=true;
+      if(cp && cp.plenoPronostico && String(cp.plenoPronostico.local)===String(plr.local) && String(cp.plenoPronostico.visitante)===String(plr.visitante)) plenoHit=true;
     }
     jEvents.push({ n:numero, complete: allRes && hasPleno, winner, copitaUser:data.copita||"", plenoHit, elim });
   }
   // ── puntos de las Tablas (si ya hay resultados reales) ──
   let realTb=null;
   try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) realTb=rt.data(); }catch(e){}
-  window.TBSIG = realTb ? JSON.stringify(realTb) : "";
+  window.TBSIG = realTb ? stableStringify(realTb) : "";
   if(realTb){
     // 1) cargar las tablas de todos
     const tbOf={};
