@@ -190,6 +190,8 @@
   .copita-bar{display:flex;align-items:center;gap:14px;padding:15px 18px;margin-bottom:18px;border-radius:var(--radius);background:var(--grad-soft);border:1px solid #f3d2d5}
   .copita-bar .cup{font-size:28px}
   .copita-bar .txt{display:flex;flex-direction:column;gap:2px}
+  .copita-bar .txt.copmsg{display:block;line-height:1.45;font-size:14px;color:var(--ink)}
+  .copita-bar .txt.copmsg b{font-weight:700}
   .copita-bar .txt .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--red);font-weight:700}
   .copita-bar .txt .who{font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink)}
   .cierre-hl{color:var(--red-deep);background:#fff;border:1px solid #f3d2d5;padding:2px 9px;border-radius:7px;white-space:nowrap;font-family:var(--display)}
@@ -832,9 +834,48 @@ function renderCoupon(){
 function pick(i,o){if(window.LOCKED)return;myPred[i]=o;renderCoupon();}
 function toggleStar(i){if(window.LOCKED)return;if(myStars.has(i))myStars.delete(i);else if(myStars.size<8)myStars.add(i);renderCoupon();}
 
+window.rndMsg=a=>a[Math.floor(Math.random()*a.length)];
+window.MSG={
+  // Pantalla 2 — abierta, te toca jugar y NO eres copita (contiene [fecha])
+  abrirJuega:[
+    "Venga, crack, te toca hacer la quini. Esta vez la copita no se te resiste. Pero recuerda hacerla antes del [fecha].",
+    "¡A jugar! ¡Y a remontar, que falta te hace (o te hará)! No te despistes, que cierra el [fecha].",
+    "Tú a lo tuyo: 14 signos y a soñar con la copita. Tienes de plazo hasta el [fecha].",
+    "Nada de excusas, que no somos Xavi Hdez: rellena tu quini antes del [fecha]."
+  ],
+  // Pantalla 3 — abierta, te toca jugar y SÍ eres copita (contiene [fecha])
+  abrirCopita:[
+    "Venga, crack, a seguir mirando por el retrovisor a los demás. Pero recuerda hacerla antes del [fecha].",
+    "A los demás les gustaría ser como tú, pero son malos. Tú, en cambio, eres la copita, al menos hasta el [fecha].",
+    "Vas de copita, pero que no se te suba a la cabeza, que solo es hasta el [fecha].",
+    "El ministro Puente tiene miedo a las alturas, pero se ve que tú no porque eres la copita. Haz la quini hasta el [fecha]."
+  ],
+  // Pantalla 3 — barra de copita (premio). Texto corrido.
+  barraCopita:[
+    "Sí, esta jornada tú eres la copita. Y ser copita tiene premio: haz el <b>Pleno al 15</b> y haz tu <b>Elige al 8</b>.",
+    "Enhorabuena, copita: te has ganado el <b>Pleno al 15</b> y el <b>Elige al 8</b>. Aprovéchalos.",
+    "Querida copita: a por el <b>Pleno al 15</b> y el <b>Elige al 8</b>, que tienes cuatro suculentos puntitos en juego...",
+    "Ya sabes que la copita hace el <b>Pleno al 15</b> y el <b>Elige al 8</b>. Trata de salvarte por esta vía, que si no, quizá lo tienes chungo."
+  ],
+  // Pantalla 4 — abierta pero descansas
+  descansa:[
+    "Pero, bueno, chavul, cómo tú por aquí, si estás eliminado. No hagas el pringui y vuelve en la siguiente.",
+    "Jornada de pies en alto y de pensar en lo mucho que has hecho mal (y tardarás un rato en ese ejercicio).",
+    "Mou no te ha convocado esta semana, piensa por qué y vuelve la siguiente.",
+    "Se han ido sin ti. La quini no espera a malos como tú.",
+    "Se acabó el eufemismo de descansas, ahora estás ELIMINADO."
+  ],
+  // Pantalla 5 — cerrada, aún sin resultados (cuerpo)
+  cerradaSinRes:[
+    "La suerte (y la quini) está echada, pero aún no se han jugado los partidos.",
+    "Has hecho lo que has podido. Ahora tienes que esperar que el delantero la enchufe.",
+    "¿Quizá ha sido tu última semana de curro de tu vida? Probablemente no, pero dejemos que hable el césped.",
+    "Refrena los nervios, que aún no hemos empezado."
+  ]
+};
 function renderCopita(){const el=document.getElementById("copita-block");
   el.innerHTML=ISCOPITA
-    ?`<div class="copita-bar"><span class="cup">🏆</span><span class="txt">Esta semana eres la <b>copita</b>. Rellena el <b>Pleno al 15</b> del partido que ha puesto Loterías y marca tus <b>8 destacados</b> (★) — los destacados no puntúan en la porra, son para tu control.</span></div>`
+    ?`<div class="copita-bar"><span class="cup">🏆</span><span class="txt copmsg">${window.rndMsg(window.MSG.barraCopita)}</span></div>`
     :`<div class="copita-bar"><span class="cup">🏆</span><span class="txt"><span class="lbl">Copita de la jornada</span><b class="who">${cap(window.COPITA||"—")}</b></span></div>`;
 }
 function renderPleno(){const el=document.getElementById("pleno-block");if(!ISCOPITA){el.innerHTML="";return;}
@@ -1161,10 +1202,14 @@ async function loadJornada(uid){
     document.getElementById("closed-state").style.display="none";
     if(descansa){
       coupon.classList.add("locked");
-      if(noticeEl) noticeEl.innerHTML='<span class="ic">😴</span><span>Esta jornada <b>descansas</b>: no te toca jugar, así que no puedes meter pronóstico. Vuelves la próxima.</span>';
+      if(noticeEl) noticeEl.innerHTML='<span class="ic">😴</span><span>'+window.rndMsg(window.MSG.descansa)+'</span>';
     }else{
       coupon.classList.remove("locked");
-      if(noticeEl) noticeEl.innerHTML='<span class="ic">🔒</span><span>Solo tú ves esto. Cierra <b class="cierre-hl">'+label+'</b></span>';
+      if(noticeEl){
+        const banco = window.ISCOPITA ? window.MSG.abrirCopita : window.MSG.abrirJuega;
+        const msg = window.rndMsg(banco).replace("[fecha]", '<b class="cierre-hl">'+label+'</b>');
+        noticeEl.innerHTML='<span class="ic">🔒</span><span>'+msg+'</span>';
+      }
       if(window.ISCOPITA && window.__savedPleno){
         const rs=document.querySelectorAll("#pleno-block .roller");
         if(rs.length===2){ rs[0].value=window.__savedPleno.local; rs[1].value=window.__savedPleno.visitante; }
@@ -1276,7 +1321,7 @@ async function showClosed(data){
   }else{ plEl.innerHTML=""; }
 
   if(!resultados){
-    jorEl.innerHTML='<div class="jcl"><div class="jh"><span class="t">Jornada cerrada</span><span class="sub">Aún sin resultados</span></div><table><tbody><tr><td style="padding:16px">El administrador todavía no ha metido los resultados. En cuanto los meta (pestaña Admin), aquí saldrá la clasificación con los desempates.</td></tr></tbody></table></div>';
+    jorEl.innerHTML='<div class="jcl"><div class="jh"><span class="t">Jornada cerrada</span><span class="sub">Aún sin resultados</span></div><table><tbody><tr><td style="padding:16px">'+window.rndMsg(window.MSG.cerradaSinRes)+'</td></tr></tbody></table></div>';
     coinEl.innerHTML=""; return;
   }
 
