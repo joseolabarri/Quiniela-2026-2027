@@ -523,7 +523,10 @@
     .tab:hover{background:none}
     .tab.active{background:none;box-shadow:none;color:var(--red)}
   }
+  /* Dentro de Famileo: sin logo ni botón Salir propios */
+  html.embed .topbar .wordmark, html.embed #logoutBtn{display:none !important}
 </style>
+<script>if (window.self !== window.top) document.documentElement.classList.add("embed");</script>
 </head>
 <body>
 
@@ -1260,7 +1263,7 @@ async function showClosed(data){
   const plenoReal = data.plenoResultado||null;
 
   const nombreDe={}; const vivos=new Set(); const uidToUser={};
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario); uidToUser[d.id]=x.usuario;}); }catch(e){}
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin && !x.juega) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario); uidToUser[d.id]=x.usuario;}); }catch(e){}
   let pronos=[];
   try{
     const qs=await getDocs(collection(db,"jornadas",ACTIVE_JID,"pronosticos"));
@@ -1544,7 +1547,7 @@ function stableStringify(o){
   return "{"+Object.keys(o).sort().map(k=>JSON.stringify(k)+":"+stableStringify(o[k])).join(",")+"}";
 }
 async function entregasCardHtml(){  let parts=[];
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario});}); }catch(e){}
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!(x.esAdmin && !x.juega)) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario});}); }catch(e){}
   try{
     const actJid = ACTIVE_JID || ADMIN_JID;
     const actSnap = await getDoc(doc(db,"jornadas",actJid));
@@ -1590,7 +1593,7 @@ async function buildAdmin(){
   let realTb={};
   try{ const rt=await getDoc(doc(db,"config","tablasResultados")); if(rt.exists()) realTb=rt.data(); }catch(e){}
   let parts=[];
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,dinero:x.dinero||0});}); }catch(e){}
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!(x.esAdmin && !x.juega)) parts.push({uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,dinero:x.dinero||0});}); }catch(e){}
   parts.sort((a,b)=>a.nombre.localeCompare(b.nombre));
   // ── contador de pronósticos de la jornada ACTIVA (solo lo ve el admin) ──
   const countHtml = await entregasCardHtml();
@@ -1784,7 +1787,7 @@ async function createParticipantes(){
       else { failed++; errs.push(usuario+" ("+(code||err.message||"error")+")"); continue; }
     }
     try{
-      await setDoc(doc(db,"participantes",uid), { usuario, nombre, equipo, esAdmin:false }, { merge:true });
+      await setDoc(doc(db,"participantes",uid), { usuario, nombre, equipo }, { merge:true });
       done++;
     }catch(e){ failed++; errs.push(usuario+" (no se pudo guardar la ficha)"); }
     await sleep(700);
@@ -1924,7 +1927,7 @@ async function saveResultados(){
 // J1: juegan los 12, sin copita. J>=2: mira la jornada anterior (cerrada y con resultados).
 async function autoCopitaYJuegan(numero){
   const parts=[];
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!x.esAdmin) parts.push({uid:d.id, usuario:x.usuario});}); }catch(e){}
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(!(x.esAdmin && !x.juega)) parts.push({uid:d.id, usuario:x.usuario});}); }catch(e){}
   const allUids=parts.map(p=>p.uid);
   if(numero<=1) return { copita:"", juegan:allUids };
   const prevJid=jid(numero-1);
@@ -2028,7 +2031,7 @@ async function renderTablasReveal(){
   grid.innerHTML='<div class="tb-card"><span class="hint" style="margin:0">Cargando el destape…</span></div>';
   // participantes actuales (para no mostrar datos de usuarios borrados)
   const nombreDe={}; const vivos=new Set();
-  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario);}); }catch(e){}
+  try{ const ps=await getDocs(collection(db,"participantes")); ps.forEach(d=>{const x=d.data(); if(x.esAdmin && !x.juega) return; nombreDe[x.usuario]=x.nombre||x.usuario; vivos.add(x.usuario);}); }catch(e){}
   let people=[];
   try{
     const ts=await getDocs(collection(db,"tablas"));
@@ -2147,7 +2150,7 @@ async function loadGeneral(){
   const acc={};
   try{
     const ps=await getDocs(collection(db,"participantes"));
-    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin) return; acc[x.usuario]={uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:0,porJornada:[]}; });
+    ps.forEach(d=>{ const x=d.data(); if(x.esAdmin && !x.juega) return; acc[x.usuario]={uid:d.id,usuario:x.usuario,nombre:x.nombre||x.usuario,equipo:x.equipo||"",puntos:0,copitas:0,dinero:Number(x.dinero)||0,tablas:0,porJornada:[]}; });
   }catch(e){}
   const uidToUser={}; Object.values(acc).forEach(a=>{ uidToUser[a.uid]=a.usuario; });
   let jornadas=[];
