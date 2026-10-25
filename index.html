@@ -523,12 +523,51 @@
     .tab:hover{background:none}
     .tab.active{background:none;box-shadow:none;color:var(--red)}
   }
-  /* Dentro de Famileo: sin logo ni botón Salir propios */
+  /* Simulador */
+  .sim-btn{display:block;width:100%;margin-top:14px;padding:14px;border:none;border-radius:var(--radius-sm);background:var(--grad);color:#fff;font:600 15px var(--display);cursor:pointer;box-shadow:0 10px 24px -12px rgba(224,30,55,.6)}
+  .sim-card{max-width:560px;max-height:90vh}
+  .sim-tit{font:700 20px var(--display);margin:0 0 4px;color:var(--ink)}
+  .sim-nota{font-size:13px;color:var(--ink-3);margin:6px 0}
+  .sim-list{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+  .sim-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--bg-soft);border-radius:var(--radius-sm)}
+  .sim-m{font-size:14px;font-weight:600;color:var(--ink);min-width:0}
+  .sim-ops{display:flex;gap:6px;align-items:center;flex:none}
+  .sim-op{width:38px;height:36px;border-radius:10px;border:1px solid var(--line-2);background:#fff;font:700 15px var(--display);color:var(--ink-2);cursor:pointer}
+  .sim-op.on{background:var(--grad);color:#fff;border-color:transparent}
+  .sim-sel{height:36px;border-radius:10px;border:1px solid var(--line-2);padding:0 6px;font:600 15px var(--display)}
+  .sim-clear{background:none;border:none;color:var(--red);font-weight:600;cursor:pointer;padding:4px 0;margin-bottom:6px}
+  .sim-out{border-top:1px solid var(--line);padding-top:10px}
+  .sim-h{font:700 15px var(--display);margin:14px 0 6px;color:var(--ink)}
+  .sim-t{width:100%;border-collapse:collapse;font-size:14px}
+  .sim-t th{font-size:12px;color:var(--ink-3);font-weight:600;text-align:right;padding:4px 6px}
+  .sim-t td{padding:7px 6px;border-top:1px solid var(--line)}
+  .sim-t td.num{text-align:right;white-space:nowrap}
+  .sim-t .st{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .sim-t .st.sigue{color:var(--green);background:var(--green-soft)}
+  .sim-t .st.desc{color:#fff;background:#D9534F}
+  .sim-t .st.cop{color:#fff;background:var(--grad)}
+  .sim-t .st.coin{color:var(--amber-ink);background:#FFF1DC;border:1px solid var(--amber-line)}
+  .sim-yo td{background:var(--red-soft);font-weight:700}
+  .sim-yo-card{background:var(--bg-soft);border-radius:var(--radius-sm);padding:12px 14px;margin:10px 0}
+  .sim-big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .sim-big b{display:block;font:700 26px var(--display);color:var(--ink)}
+  .sim-big span{font-size:12px;color:var(--ink-2)}
+  .sim-ul{margin:4px 0 4px 18px;padding:0;font-size:14px}
+  .sim-ok{color:var(--green);font-weight:700}
+  .sim-no{color:#C0392B;font-weight:700}
+  /* Pantalla de carga: evita ver el login o datos de ejemplo mientras arranca */
+  #login{display:none}
+  #arranque{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:#fff}
+  #arranque .giro{width:42px;height:42px;border-radius:50%;border:4px solid var(--red-soft);border-top-color:var(--red);animation:giro .8s linear infinite}
+  @keyframes giro{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){#arranque .giro{animation-duration:2.4s}}
+  /* Dentro de OlApp: sin logo ni botón Salir propios */
   html.embed .topbar .wordmark, html.embed #logoutBtn{display:none !important}
 </style>
 <script>if (window.self !== window.top) document.documentElement.classList.add("embed");</script>
 </head>
 <body>
+<div id="arranque" role="status" aria-label="Cargando"><div class="giro"></div></div>
 
 <div id="login">
   <div class="login-card">
@@ -1289,6 +1328,13 @@ async function showClosed(data){
   }
 
   const copPron = pronos.find(p=>p.usuario===copita);
+  window.__SIM = {
+    pronos: pronos.map(p=>({usuario:p.usuario, nombre:p.nombre||p.usuario, signos:(p.signos||[]).slice(), pleno:p.plenoPronostico||null, olvido:!!p.olvido})),
+    resultados: (resultados||new Array(14).fill(null)).map(r=>(r==="1"||r==="X"||r==="2")?r:null),
+    partidos, copita, plenoReal, moneda: data.moneda||{},
+    nombreCopita: (nombreDe[copita]||copita||"el copita"),
+    plenoNombre: (data.pleno && data.pleno.local) ? `${data.pleno.local} – ${data.pleno.visitante}` : ""
+  };
   const destSet = new Set((copPron && copPron.destacados) || []);
   renderRealReveal(partidos, resultados, pronos, destSet);
 
@@ -1378,10 +1424,13 @@ async function showClosed(data){
   });
   let probs=null, probState='hide';
   const pendCount = resultados.filter(r=>!r).length;
-  if(pendCount>0 && rows.length>=8){
-    probs = classifyProbs(pronos, resultados, partidos, 8000); probState='show';
+  const simPend = window.__SIM.resultados.some(r=>!r) || (simPlenoPend(window.__SIM) && !!simCopPleno(window.__SIM));
+  if(simPend && rows.length>=8){
+    probs = simCalcular(window.__SIM, null, null, null).prob; probState='show';
   }
   renderRealClasif(rows, probs, probState);
+  if(simPend) document.getElementById("jorClasif").insertAdjacentHTML("beforeend",
+    `<button class="sim-btn" onclick="abrirSimulador()">🔮 Simulador: ¿y si…?</button>`);
 
   // sorteo de moneda
   if(pendingGroups.length){
@@ -2120,6 +2169,205 @@ function scoreSignos(signos, resultados, partidos){
 
 // Probabilidad de clasificarse / ser copita simulando los partidos que faltan.
 // Requiere >=8 resultados metidos y que aún queden partidos. Devuelve mapa usuario -> {pClasif,pCopita} o null.
+
+/* ═════════════════════════ SIMULADOR ═════════════════════════
+   Calcula la clasificación de la jornada con resultados inventados.
+   Usa las mismas reglas que la clasificación real: aciertos, pleno al 15
+   (+4 al copita si lo acierta), olvidos a mitad de puntos, desempates
+   (2ª, visitantes, empates) y monedas ya resueltas. */
+const SIM_OPC=["1","X","2"];
+const SIM_PLENO=["0","1","2","M"];
+const simPlenoPend=S=>{ const r=S.plenoReal; return !(r && r.local!=null && r.local!=="" && r.visitante!=null && r.visitante!==""); };
+const simCopPleno=S=>{ const c=S.pronos.find(p=>p.usuario===S.copita); return (c && c.pleno && c.pleno.local!=null && c.pleno.local!=="") ? c.pleno : null; };
+
+function simFila(S, res, plenoRes){
+  const rows=S.pronos.map(p=>{
+    let pts=0,seg2=0,away=0,draw=0;
+    for(let i=0;i<14;i++){ const r=res[i]; if(r && p.signos[i]===r){ pts++; if(S.partidos[i]&&S.partidos[i].seg) seg2++; if(r==="2") away++; if(r==="X") draw++; } }
+    const isCop=p.usuario===S.copita; let plenoHit=false;
+    if(isCop && plenoRes && p.pleno){
+      plenoHit = String(p.pleno.local)===String(plenoRes.local) && String(p.pleno.visitante)===String(plenoRes.visitante);
+      if(plenoHit) pts+=4;
+    }
+    if(p.olvido) pts=Math.floor(pts/2);
+    return {usuario:p.usuario,nombre:p.nombre,isCop,plenoHit,pts,seg2,away,draw,olvido:!!p.olvido};
+  });
+  rows.sort((a,b)=> (a.olvido?1:0)-(b.olvido?1:0) || b.pts-a.pts || b.seg2-a.seg2 || b.away-a.away || b.draw-a.draw);
+  applyCoin(rows, S.moneda);
+  return rows;
+}
+
+// Para cada persona: posición, si es copita y si se clasifica (los empates a moneda cuentan a partes iguales)
+function simEstado(rows, S){
+  const n=rows.length, cut = n>=8 ? n-4 : n, out={};
+  rows.forEach((r,i)=>{ out[r.usuario]={pos:i, cop:(!r.olvido&&i===0)?1:0, clas:(!r.olvido&&i<cut)?1:0, coin:false}; });
+  coinGroups(rows).forEach(([a,b])=>{
+    const m=rows.slice(a,b+1), key=m.map(x=>x.usuario).sort().join("|");
+    if(S.moneda && S.moneda[key]) return;
+    const size=b-a+1, cop=a===0?1/size:0, clas=Math.max(0,Math.min(b+1,cut)-a)/size;
+    const dudoso = a===0 || (a<cut && b>=cut);
+    m.forEach(x=>{ const o=out[x.usuario]; o.cop=cop; o.clas=clas; o.coin=dudoso; });
+  });
+  return out;
+}
+
+// Recorre todas las combinaciones de los partidos que falten (o una muestra si son demasiadas)
+function simCalcular(S, fijos, plenoFijo, yo){
+  const base=S.resultados.map((r,i)=> r || (fijos&&fijos[i]) || null);
+  const libres=[]; for(let i=0;i<14;i++) if(!base[i]) libres.push(i);
+  let plenos;
+  if(!simPlenoPend(S)) plenos=[{res:S.plenoReal,w:1,hit:null}];
+  else if(plenoFijo) plenos=[{res:plenoFijo,w:1,hit:null}];
+  else { const cp=simCopPleno(S); plenos = cp ? [{res:cp,w:1,hit:true},{res:{local:"_",visitante:"_"},w:15,hit:false}] : [{res:null,w:1,hit:null}]; }
+  const pesoPleno=plenos.reduce((s,p)=>s+p.w,0);
+  const k=libres.length, nComb=Math.pow(3,k);
+  const exacto = nComb*plenos.length <= 120000;
+  const acc={}; S.pronos.forEach(p=>acc[p.usuario]={cop:0,clas:0});
+  const casos=[]; const res=base.slice();
+  const evalua=(peso,pl,combo)=>{
+    const est=simEstado(simFila(S,res,pl.res),S);
+    for(const u in est){ acc[u].cop+=est[u].cop*peso; acc[u].clas+=est[u].clas*peso; }
+    if(combo && yo && est[yo]) casos.push({combo, hit:pl.hit, w:peso, cop:est[yo].cop, clas:est[yo].clas});
+  };
+  let pesoTotal;
+  if(exacto){
+    for(let c=0;c<nComb;c++){
+      let x=c; const combo=new Array(k);
+      for(let j=0;j<k;j++){ combo[j]=SIM_OPC[x%3]; x=Math.floor(x/3); res[libres[j]]=combo[j]; }
+      for(const pl of plenos) evalua(pl.w,pl,combo);
+    }
+    pesoTotal=nComb*pesoPleno;
+  } else {
+    const N=20000;
+    for(let s=0;s<N;s++){
+      for(const i of libres) res[i]=SIM_OPC[Math.floor(Math.random()*3)];
+      const pl = plenos.length===1 ? plenos[0] : (Math.random()<1/16 ? plenos[0] : plenos[1]);
+      evalua(1,pl,null);
+    }
+    pesoTotal=N;
+  }
+  const prob={}; for(const u in acc) prob[u]={pClasif:acc[u].clas/pesoTotal, pCopita:acc[u].cop/pesoTotal};
+  return {libres, plenos, total:nComb*pesoPleno, exacto, prob, casos, pesoTotal, plenoPend:plenos.length>1, base};
+}
+
+function simTextoCond(p, set){
+  const L=(p&&p.local)||"local", V=(p&&p.visitante)||"visitante", s=[...set].sort().join("");
+  return ({ "1":`gane ${L} (vs ${V})`, "X":`${L} y ${V} empaten`, "2":`gane ${V} (en ${L})`,
+            "1X":`${L} no pierda contra ${V}`, "2X":`${V} no pierda en ${L}`, "12":`no haya empate en ${L}–${V}` })[s]||"";
+}
+
+// ¿Qué necesitas? Para "clas" o "cop"
+function simCondiciones(r, obj, S){
+  if(!r.exacto || !r.casos.length) return null;
+  const ok=r.casos.filter(c=>c[obj]>=0.999);
+  if(ok.length===r.casos.length) return {tipo:"siempre"};
+  if(!ok.length) return {tipo: r.casos.some(c=>c[obj]>0) ? "moneda" : "nunca"};
+  const k=r.libres.length, perm=[...Array(k)].map(()=>new Set()), hits=new Set();
+  ok.forEach(c=>{ c.combo.forEach((o,j)=>perm[j].add(o)); hits.add(c.hit); });
+  const plenoNec = r.plenoPend && hits.size===1 && hits.has(true);
+  const dentro=r.casos.filter(c=>c.combo.every((o,j)=>perm[j].has(o)) && (!plenoNec || c.hit===true));
+  const basta=dentro.every(c=>c[obj]>=0.999);
+  const conds=[];
+  r.libres.forEach((idx,j)=>{ if(perm[j].size<3) conds.push(simTextoCond(S.partidos[idx], perm[j])); });
+  if(plenoNec) conds.push(`que ${S.nombreCopita} acierte el pleno al 15`);
+  return {tipo: basta ? "basta" : "minimo", conds};
+}
+
+/* ---------- Pantalla del simulador ---------- */
+let SIMF=null;
+window.abrirSimulador=()=>{
+  if(!window.__SIM) return;
+  SIMF={fijos:new Array(14).fill(null), pl:{local:"",visitante:""}};
+  document.getElementById("simModal").hidden=false; document.body.style.overflow="hidden";
+  pintarSim();
+};
+window.cerrarSim=()=>{ document.getElementById("simModal").hidden=true; document.body.style.overflow=""; };
+window.simElegir=(i,o)=>{ SIMF.fijos[i] = SIMF.fijos[i]===o ? null : o; pintarSim(); };
+window.simPleno=()=>{ SIMF.pl.local=document.getElementById("simPlL").value; SIMF.pl.visitante=document.getElementById("simPlV").value; pintarSim(); };
+window.simLimpiar=()=>{ SIMF={fijos:new Array(14).fill(null), pl:{local:"",visitante:""}}; pintarSim(); };
+
+const simPct=x=>{ const v=Math.round(x*100); return (x>0 && v===0) ? "<1%" : (x<1 && v===100) ? ">99%" : v+"%"; };
+const simEsc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function simCondHTML(c, verbo){
+  if(!c) return "";
+  if(c.tipo==="siempre") return `<p class="sim-ok">✅ Pase lo que pase, ${verbo}.</p>`;
+  if(c.tipo==="nunca") return `<p class="sim-no">❌ Ya no hay ninguna combinación en la que ${verbo}.</p>`;
+  if(c.tipo==="moneda") return `<p class="sim-no">🪙 Solo podrías llegar empatando y ganando a moneda.</p>`;
+  if(!c.conds.length) return `<p>Depende de cómo se combinen los resultados: prueba a fijar algunos arriba.</p>`;
+  const li=c.conds.map(x=>`<li>${simEsc(x)}</li>`).join("");
+  return c.tipo==="basta"
+    ? `<p>Lo consigues si:</p><ul class="sim-ul">${li}</ul>`
+    : `<p>Como mínimo necesitas:</p><ul class="sim-ul">${li}</ul><p class="sim-nota">…y aun así no está asegurado: depende también del resto de resultados, del pleno al 15 o de una moneda.</p>`;
+}
+
+function pintarSim(){
+  const S=window.__SIM, yo=window.MYUSER, juego=S.pronos.some(p=>p.usuario===yo);
+  const plPend=simPlenoPend(S);
+  const plenoFijo = (plPend && SIMF.pl.local!=="" && SIMF.pl.visitante!=="") ? {...SIMF.pl} : null;
+  const r=simCalcular(S, SIMF.fijos, plenoFijo, juego?yo:null);
+
+  // Partidos pendientes con sus botones
+  let partidos="";
+  for(let i=0;i<14;i++){
+    if(S.resultados[i]) continue;
+    const p=S.partidos[i]||{local:"?",visitante:"?"};
+    partidos+=`<div class="sim-row"><span class="sim-m">${i+1}. ${simEsc(p.local)} – ${simEsc(p.visitante)}</span><span class="sim-ops">${
+      SIM_OPC.map(o=>`<button class="sim-op${SIMF.fijos[i]===o?" on":""}" onclick="simElegir(${i},'${o}')">${o}</button>`).join("")}</span></div>`;
+  }
+  if(plPend && simCopPleno(S)){
+    const opt=v=>`<option value="">–</option>`+SIM_PLENO.map(x=>`<option${v===x?" selected":""}>${x}</option>`).join("");
+    partidos+=`<div class="sim-row"><span class="sim-m">🏆 Pleno al 15 · ${simEsc(S.plenoNombre)}</span><span class="sim-ops">
+      <select id="simPlL" class="sim-sel" onchange="simPleno()">${opt(SIMF.pl.local)}</select><b>:</b>
+      <select id="simPlV" class="sim-sel" onchange="simPleno()">${opt(SIMF.pl.visitante)}</select></span></div>`;
+  }
+
+  let salida="";
+  const cerrado = r.libres.length===0 && r.plenos.length===1;
+  if(cerrado){
+    // Todo decidido: clasificación exacta de ese escenario
+    const rows=simFila(S, r.base, r.plenos[0].res), est=simEstado(rows,S), n=rows.length, cut=n>=8?n-4:n;
+    salida=`<h4 class="sim-h">Así quedaría la jornada</h4><table class="sim-t"><tbody>${rows.map((x,i)=>{
+      const e=est[x.usuario]; let st;
+      if(x.olvido) st=`<span class="st desc">Eliminado</span>`;
+      else if(e.coin) st=`<span class="st coin">🪙 A sorteo</span>`;
+      else if(i===0) st=`<span class="st cop">🏆 Copita</span>`;
+      else if(n>=8 && i>=cut) st=`<span class="st desc">Eliminado</span>`;
+      else st=`<span class="st sigue">Clasificado</span>`;
+      return `<tr class="${x.usuario===yo?"sim-yo":""}"><td class="num">${i+1}º</td><td>${simEsc(x.nombre)}${x.plenoHit?" 🎯":""}</td><td class="num"><b>${x.pts}</b></td><td>${st}</td></tr>`;
+    }).join("")}</tbody></table>`;
+  } else {
+    const comb = r.exacto ? `${r.total.toLocaleString("es-ES")} combinaciones posibles${r.plenoPend?" (contando los 16 resultados del pleno)":""}` : "muchas combinaciones: porcentajes aproximados";
+    let mio="";
+    if(juego){
+      const pr=r.prob[yo];
+      const enN=x=> r.exacto ? ` (${Math.round(x*r.total).toLocaleString("es-ES")})` : "";
+      mio=`<div class="sim-yo-card"><div class="sim-big">
+          <div><b>${simPct(pr.pClasif)}</b><span>te clasificas${enN(pr.pClasif)}</span></div>
+          <div><b>${simPct(pr.pCopita)}</b><span>eres copita${enN(pr.pCopita)}</span></div>
+          <div><b>${simPct(1-pr.pClasif)}</b><span>te eliminas${enN(1-pr.pClasif)}</span></div></div>
+        ${r.exacto ? `<h4 class="sim-h">Para clasificarte</h4>${simCondHTML(simCondiciones(r,"clas",S),"te clasificas")}
+          <h4 class="sim-h">Para ser copita</h4>${simCondHTML(simCondiciones(r,"cop",S),"eres copita")}`
+          : `<p class="sim-nota">Cuando falten 10 partidos o menos, aquí verás qué resultados necesitas.</p>`}
+        </div>`;
+    } else {
+      mio=`<p class="sim-nota">Esta jornada no juegas, pero puedes ver cómo queda para los demás.</p>`;
+    }
+    const filas=S.pronos.map(p=>({p, pr:r.prob[p.usuario]})).sort((a,b)=>b.pr.pClasif-a.pr.pClasif || b.pr.pCopita-a.pr.pCopita);
+    salida=`<p class="sim-nota">${comb}. Todos los resultados cuentan igual.</p>${mio}
+      <h4 class="sim-h">Todos</h4><table class="sim-t"><thead><tr><th></th><th>Se clasifica</th><th>Copita</th></tr></thead><tbody>${
+      filas.map(f=>`<tr class="${f.p.usuario===yo?"sim-yo":""}"><td>${simEsc(f.p.nombre)}</td><td class="num">${simPct(f.pr.pClasif)}</td><td class="num">${simPct(f.pr.pCopita)}</td></tr>`).join("")}</tbody></table>
+      <p class="sim-nota">Los empates que se deciden a moneda cuentan a medias.</p>`;
+  }
+
+  document.getElementById("simBody").innerHTML=`
+    <h3 class="sim-tit">🔮 Simulador</h3>
+    <p class="sim-nota">Elige resultados para ver qué pasaría. Los que dejes sin marcar se calculan con todas sus posibilidades.</p>
+    <div class="sim-list">${partidos}</div>
+    ${SIMF.fijos.some(Boolean)||plenoFijo ? `<button class="sim-clear" onclick="simLimpiar()">Borrar mis elecciones</button>` : ""}
+    <div class="sim-out">${salida}</div>`;
+}
+
 function classifyProbs(pronos, resultados, partidos, N){
   const pend=[]; for(let i=0;i<14;i++){ if(!resultados[i]) pend.push(i); }
   const n=pronos.length;
@@ -2345,21 +2593,30 @@ function composeSummary(rows, acc, jEvents, teams){
   return { n:N, text:S.slice(0,7).join(" ") };
 }
 
+const quitarArranque=()=>{ const a=document.getElementById("arranque"); if(a) a.remove(); };
+setTimeout(quitarArranque, 6000); // por si algo tarda demasiado
 onAuthStateChanged(auth, (u)=>{
   btn.disabled=false; btn.textContent="Entrar";
   if(u){
     const name=(u.email||"").split("@")[0]||"usuario";
     window.MYUSER=name;
     window.showAppFor(name);
-    loadJornada(u.uid);
+    loadJornada(u.uid).catch(()=>{}).finally(quitarArranque);
     loadTablas(u.uid);
     checkAdmin(u.uid);
     loadGeneral();
   }else{
     window.showLogin();
+    quitarArranque();
   }
 });
 </script>
+<div id="simModal" class="bd-modal" hidden onclick="if(event.target===this)cerrarSim()">
+  <div class="bd-card sim-card">
+    <button class="bd-close" onclick="cerrarSim()" aria-label="Cerrar">✕</button>
+    <div id="simBody"></div>
+  </div>
+</div>
 <div id="bdModal" class="bd-modal" hidden onclick="if(event.target===this)closeBreakdown()">
   <div class="bd-card">
     <button class="bd-close" onclick="closeBreakdown()" aria-label="Cerrar">✕</button>
